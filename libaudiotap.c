@@ -437,6 +437,12 @@ enum audiotap_status tap2audio_open(struct audiotap **audiotap, char *file, int3
   error=AUDIOTAP_NO_MEMORY;
   if ((obj->tap=tap_toaudio_init(freq, volume, inverted))==NULL)
     goto err;
+  error=AUDIOTAP_LIBRARY_ERROR;
+  if (tap_set_machine(obj->tap,machine,videotype)!=TAP_OK){
+    tap_exit(obj->tap);
+    goto err;
+  }
+
   *audiotap = obj;
   return AUDIOTAP_OK;
 
