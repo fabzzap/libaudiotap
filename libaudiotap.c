@@ -1,5 +1,5 @@
 /* Audiotap shared library: a higher-level interface to TAP shared library
- * 
+ *
  * TAP->audio: feeds TAP data to TAP library, gets audio data from it and feeds
  * it either to audiofile library (for writing WAV files) or to pablio library
  * (for playing)
@@ -88,7 +88,7 @@ static enum library_status audiofile_init(){
   if (!afReadFrames) {
     return LIBRARY_SYMBOLS_MISSING;
   };
-  
+
 #if defined(WIN32)
   afWriteFrames = (void*)GetProcAddress(handle, "afWriteFrames");
 #else
@@ -97,7 +97,7 @@ static enum library_status audiofile_init(){
   if (!afWriteFrames) {
     return LIBRARY_SYMBOLS_MISSING;
   };
-  
+
 #if defined(WIN32)
   afSetVirtualChannels = (void*)GetProcAddress(handle, "afSetVirtualChannels");
 #else
@@ -106,7 +106,7 @@ static enum library_status audiofile_init(){
   if (!afSetVirtualChannels) {
     return LIBRARY_SYMBOLS_MISSING;
   };
-  
+
 #if defined(WIN32)
   afGetSampleFormat = (void*)GetProcAddress(handle, "afGetSampleFormat");
 #else
@@ -115,7 +115,7 @@ static enum library_status audiofile_init(){
   if (!afGetSampleFormat) {
     return LIBRARY_SYMBOLS_MISSING;
   };
-  
+
 #if defined(WIN32)
   afSetVirtualSampleFormat = (void*)GetProcAddress(handle, "afSetVirtualSampleFormat");
 #else
@@ -124,7 +124,7 @@ static enum library_status audiofile_init(){
   if (!afSetVirtualSampleFormat) {
     return LIBRARY_SYMBOLS_MISSING;
   };
-  
+
 #if defined(WIN32)
   afGetVirtualFrameSize = (void*)GetProcAddress(handle, "afGetVirtualFrameSize");
 #else
@@ -133,7 +133,7 @@ static enum library_status audiofile_init(){
   if (!afGetVirtualFrameSize) {
     return LIBRARY_SYMBOLS_MISSING;
   };
-  
+
 #if defined(WIN32)
   afGetFrameCount = (void*)GetProcAddress(handle, "afGetFrameCount");
 #else
@@ -142,7 +142,7 @@ static enum library_status audiofile_init(){
   if (!afGetFrameCount) {
     return LIBRARY_SYMBOLS_MISSING;
   };
-  
+
 #if defined(WIN32)
   afTellFrame = (void*)GetProcAddress(handle, "afTellFrame");
 #else
@@ -151,7 +151,7 @@ static enum library_status audiofile_init(){
   if (!afTellFrame) {
     return LIBRARY_SYMBOLS_MISSING;
   };
-  
+
 #if defined(WIN32)
   afInitFileFormat = (void*)GetProcAddress(handle, "afInitFileFormat");
 #else
@@ -160,7 +160,7 @@ static enum library_status audiofile_init(){
   if (!afInitFileFormat) {
     return LIBRARY_SYMBOLS_MISSING;
   };
-  
+
 #if defined(WIN32)
   afInitSampleFormat = (void*)GetProcAddress(handle, "afInitSampleFormat");
 #else
@@ -169,7 +169,7 @@ static enum library_status audiofile_init(){
   if (!afInitSampleFormat) {
     return LIBRARY_SYMBOLS_MISSING;
   };
-  
+
 #if defined(WIN32)
   afInitChannels = (void*)GetProcAddress(handle, "afInitChannels");
 #else
@@ -178,7 +178,7 @@ static enum library_status audiofile_init(){
   if (!afInitChannels) {
     return LIBRARY_SYMBOLS_MISSING;
   };
-  
+
 #if defined(WIN32)
   afInitRate = (void*)GetProcAddress(handle, "afInitRate");
 #else
@@ -187,7 +187,7 @@ static enum library_status audiofile_init(){
   if (!afInitRate) {
     return LIBRARY_SYMBOLS_MISSING;
   };
-  
+
 #if defined(WIN32)
   afGetRate = (void*)GetProcAddress(handle, "afGetRate");
 #else
@@ -196,7 +196,7 @@ static enum library_status audiofile_init(){
   if (!afGetRate) {
     return LIBRARY_SYMBOLS_MISSING;
   };
-  
+
 #if defined(WIN32)
   afNewFileSetup = (void*)GetProcAddress(handle, "afNewFileSetup");
 #else
@@ -205,7 +205,7 @@ static enum library_status audiofile_init(){
   if (!afNewFileSetup) {
     return LIBRARY_SYMBOLS_MISSING;
   };
-  
+
 #if defined(WIN32)
   afFreeFileSetup = (void*)GetProcAddress(handle, "afFreeFileSetup");
 #else
@@ -214,13 +214,13 @@ static enum library_status audiofile_init(){
   if (!afFreeFileSetup) {
     return LIBRARY_SYMBOLS_MISSING;
   };
-  
+
   return LIBRARY_OK;
 }
 
 static enum library_status pablio_init(){
   void *handle;
-  
+
 #if (defined(__CYGWIN__))
   handle=dlopen("pablio.dll", RTLD_LAZY);
 #elif defined(WIN32)
@@ -276,7 +276,7 @@ struct audiotap_init_status audiotap_initialize(void){
   return status;
 }
 
-enum audiotap_status audio2tap_open(struct audiotap **audiotap, 
+enum audiotap_status audio2tap_open(struct audiotap **audiotap,
 				    char *file,
 					u_int32_t freq,
 				    u_int32_t min_duration,
@@ -287,7 +287,7 @@ enum audiotap_status audio2tap_open(struct audiotap **audiotap,
 
   obj=calloc(1, sizeof(struct audiotap));
   if (obj == NULL) return AUDIOTAP_NO_MEMORY;
-  
+
   if (file == NULL){
     if (status.pablio_init_status != LIBRARY_OK){
       free(obj);
@@ -333,7 +333,7 @@ enum audiotap_status audio2tap_get_pulse(struct audiotap *audiotap, u_int32_t *p
   while(1){
     if(audiotap->terminated)
       return AUDIOTAP_INTERRUPTED;
-    
+
     *pulse=tap_get_pulse(audiotap->tap);
     if(*pulse < 1<<24)
       return AUDIOTAP_OK;
@@ -351,7 +351,7 @@ enum audiotap_status audio2tap_get_pulse(struct audiotap *audiotap, u_int32_t *p
     else
       numframes=ReadAudioStream(audiotap->pablio, audiotap->buffer, AUDIOTAP_BUFSIZE);
     tap_set_buffer(audiotap->tap, audiotap->buffer, numframes);
-  }    
+  }
 }
 
 int audio2tap_get_total_len(struct audiotap *audiotap){
@@ -362,10 +362,8 @@ int audio2tap_get_total_len(struct audiotap *audiotap){
 int audio2tap_get_current_pos(struct audiotap *audiotap){
   AFframecount count;
 
-  if (audiotap->file == 0) return -1;
-  count=afTellFrame(audiotap->file, AF_DEFAULT_TRACK);
-  if (count == AF_BAD_LSEEK) return -1;
-  return (int)count;
+  if (audiotap->file == 0 || audiotap->tap == 0) return -1;
+  return tap_get_pos(audiotap->tap);
 }
 
 int32_t audio2tap_get_current_sound_level(struct audiotap *audiotap){
@@ -396,14 +394,14 @@ enum audiotap_status tap2audio_open(struct audiotap **audiotap, char *file, int3
 
   obj=calloc(1, sizeof(struct audiotap));
   if (obj == NULL) return AUDIOTAP_NO_MEMORY;
-  
+
   obj->bufstart=obj->buffer = malloc(AUDIOTAP_BUFSIZE*sizeof(int32_t));
   if (obj->buffer == NULL) {
 	  free(obj);
 	  return AUDIOTAP_NO_MEMORY;
   }
   obj->bufroom=AUDIOTAP_BUFSIZE;
-  
+
   if (file == NULL){
     if (status.pablio_init_status != LIBRARY_OK){
       error = AUDIOTAP_LIBRARY_UNAVAILABLE;
@@ -452,7 +450,7 @@ enum audiotap_status tap2audio_set_pulse(struct audiotap *audiotap, u_int32_t pu
   int numframes, numwritten;
 
   tap_set_pulse(audiotap->tap, pulse);
-  
+
   while(1){
     if(audiotap->terminated)
       return AUDIOTAP_INTERRUPTED;
@@ -460,7 +458,7 @@ enum audiotap_status tap2audio_set_pulse(struct audiotap *audiotap, u_int32_t pu
     numframes=tap_get_buffer(audiotap->tap, audiotap->buffer, audiotap->bufroom);
     audiotap->buffer += numframes;
     audiotap->bufroom -= numframes;
-    
+
     if (audiotap->bufroom != 0)
       return AUDIOTAP_OK;
 
@@ -470,7 +468,7 @@ enum audiotap_status tap2audio_set_pulse(struct audiotap *audiotap, u_int32_t pu
     }
     else {
       numframes=WriteAudioStream(audiotap->pablio, audiotap->bufstart, audiotap->buffer - audiotap->bufstart);
-    }    
+    }
 
     free(audiotap->bufstart);
     audiotap->bufstart=audiotap->buffer=malloc(AUDIOTAP_BUFSIZE*sizeof(int32_t));
