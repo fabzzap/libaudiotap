@@ -51,7 +51,7 @@ enum audiotap_status audio2tap_open(struct audiotap **audiotap,
 				    u_int32_t min_height,
 				    int inverted);
 
-enum audiotap_status audio2tap_get_pulse(struct audiotap *audiotap, struct tap_pulse *pulse);
+enum audiotap_status audio2tap_get_pulse(struct audiotap *audiotap, u_int32_t *pulse);
 int audio2tap_get_total_len(struct audiotap *audiotap);
 int audio2tap_get_current_pos(struct audiotap *audiotap);
 void audiotap_terminate(struct audiotap *audiotap);

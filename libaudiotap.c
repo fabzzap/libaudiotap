@@ -327,13 +327,15 @@ enum audiotap_status audio2tap_open(struct audiotap **audiotap,
   return error;
 }
 
-enum audiotap_status audio2tap_get_pulse(struct audiotap *audiotap, struct tap_pulse *pulse){
+enum audiotap_status audio2tap_get_pulse(struct audiotap *audiotap, u_int32_t *pulse){
   int numframes;
 
   while(1){
     if(audiotap->terminated)
       return AUDIOTAP_INTERRUPTED;
-    if(tap_get_pulse(audiotap->tap, pulse) == TAP_OK)
+    
+    *pulse=tap_get_pulse(audiotap->tap);
+    if(*pulse < 1<<24)
       return AUDIOTAP_OK;
 
     if (audiotap->buffer != NULL)
