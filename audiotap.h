@@ -50,7 +50,7 @@ enum audiotap_status audio2tap_open(struct audiotap **audiotap,
 				    u_int32_t min_duration,
 				    u_int32_t min_height,
 				    int inverted);
-
+enum audiotap_status audio2tap_set_machine(struct audiotap *audiotap, u_int8_t machine, u_int8_t videotype);
 enum audiotap_status audio2tap_get_pulse(struct audiotap *audiotap, u_int32_t *pulse);
 int audio2tap_get_total_len(struct audiotap *audiotap);
 int audio2tap_get_current_pos(struct audiotap *audiotap);

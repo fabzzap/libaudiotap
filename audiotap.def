@@ -1,16 +1,17 @@
 LIBRARY      AUDIOTAP.DLL
 
 EXPORTS
-	audiotap_initialize               
-	audio2tap_open                    
-	audio2tap_get_pulse               
-	audio2tap_get_total_len           
-	audio2tap_get_current_pos        
-	audio2tap_get_current_sound_level 
-	audio2tap_close                  
-	tap2audio_open                  
-	tap2audio_set_pulse            
-	tap2audio_close               
-	audiotap_terminate           
+	audiotap_initialize
+	audio2tap_open
+	audio2tap_set_machine
+	audio2tap_get_pulse
+	audio2tap_get_total_len
+	audio2tap_get_current_pos
+	audio2tap_get_current_sound_level
+	audio2tap_close
+	tap2audio_open
+	tap2audio_set_pulse
+	tap2audio_close
+	audiotap_terminate
 
 

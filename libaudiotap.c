@@ -327,6 +327,12 @@ enum audiotap_status audio2tap_open(struct audiotap **audiotap,
   return error;
 }
 
+enum audiotap_status audio2tap_set_machine(struct audiotap *audiotap, u_int8_t machine, u_int8_t videotype){
+  if (tap_set_machine(audiotap->tap,machine,videotype)!=TAP_OK)
+    return AUDIOTAP_LIBRARY_ERROR;
+  return AUDIOTAP_OK;
+}
+
 enum audiotap_status audio2tap_get_pulse(struct audiotap *audiotap, u_int32_t *pulse){
   int numframes;
 
