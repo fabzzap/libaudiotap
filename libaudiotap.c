@@ -51,12 +51,28 @@ static enum library_status audiofile_init(){
   void *handle;
 #endif
 
-#if (defined(__CYGWIN__))
-  handle=dlopen("audiofile.dll", RTLD_LAZY);
-#elif defined(WIN32)
-  handle=LoadLibrary("audiofile.dll");
+static const char* audiofile_library_name =
+#if (defined _MSC_VER)
+#ifdef _DEBUG
+"audiofiled.dll"
+#else //_MSC_VER and not DEBUG
+"audiofile.dll"
+#endif //_MSC_VER,DEBUG
+#elif (defined _WIN32 || defined __CYGWIN__)
+#ifdef (AUDIOFILE_COMPILED_WITH_CYGWIN_SHELL)
+"cygaudiofile-0.dll"
+#else //not AUDIOFILE_COMPILED_WITH_CYGWIN_SHELL
+"libaudiofile-0.dll"
+#endif //_WIN32 or __CYGWIN__,AUDIOFILE_COMPILED_WITH_CYGWIN_SHELL
+#else //not _MSC_VER, not _WIN32, not __CYGWIN__
+"libaudiofile.so.0"
+#endif//_MSC_VER,_WIN32 or __CYGWIN__
+;
+
+#if defined(WIN32)
+  handle=LoadLibraryA(audiofile_library_name);
 #else
-  handle=dlopen("libaudiofile.so", RTLD_LAZY);
+  handle=dlopen(audiofile_library_name, RTLD_LAZY);
 #endif
   if (!handle) {
     return LIBRARY_MISSING;
@@ -224,7 +240,7 @@ static enum library_status pablio_init(){
 #if (defined(__CYGWIN__))
   handle=dlopen("pablio.dll", RTLD_LAZY);
 #elif defined(WIN32)
-  handle=LoadLibrary("pablio.dll");
+  handle=LoadLibraryA("pablio.dll");
 #else
   handle=dlopen("libpablio.so", RTLD_LAZY);
 #endif
@@ -366,8 +382,6 @@ int audio2tap_get_total_len(struct audiotap *audiotap){
 }
 
 int audio2tap_get_current_pos(struct audiotap *audiotap){
-  AFframecount count;
-
   if (audiotap->file == 0 || audiotap->tap == 0) return -1;
   return tap_get_pos(audiotap->tap);
 }
