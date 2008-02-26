@@ -59,7 +59,7 @@ static const char* audiofile_library_name =
 "audiofile.dll"
 #endif //_MSC_VER,DEBUG
 #elif (defined _WIN32 || defined __CYGWIN__)
-#ifdef (AUDIOFILE_COMPILED_WITH_CYGWIN_SHELL)
+#ifdef AUDIOFILE_COMPILED_WITH_CYGWIN_SHELL
 "cygaudiofile-0.dll"
 #else //not AUDIOFILE_COMPILED_WITH_CYGWIN_SHELL
 "libaudiofile-0.dll"
