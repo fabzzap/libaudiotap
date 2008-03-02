@@ -357,9 +357,12 @@ enum audiotap_status audio2tap_get_pulse(struct audiotap *audiotap, u_int32_t *p
       return AUDIOTAP_INTERRUPTED;
 
     *pulse=tap_get_pulse(audiotap->tap);
-    if(*pulse < 1<<24)
+    if(*pulse < TAP_NO_MORE_SAMPLES)
       return AUDIOTAP_OK;
 
+    if (tap_is_flushing(audiotap->tap))
+      return AUDIOTAP_EOF;
+    
     if (audiotap->buffer != NULL)
       free(audiotap->buffer);
     audiotap->buffer=malloc(AUDIOTAP_BUFSIZE*sizeof(int32_t));
@@ -368,7 +371,11 @@ enum audiotap_status audio2tap_get_pulse(struct audiotap *audiotap, u_int32_t *p
     if (audiotap->file != NULL){
       numframes=afReadFrames(audiotap->file, AF_DEFAULT_TRACK, audiotap->buffer, AUDIOTAP_BUFSIZE);
       if (numframes == -1) return AUDIOTAP_LIBRARY_ERROR;
-      if (numframes == 0) return AUDIOTAP_EOF;
+      if (numframes == 0)
+      {
+        tap_flush(audiotap->tap);
+        continue;
+      }
     }
     else
       numframes=ReadAudioStream(audiotap->pablio, audiotap->buffer, AUDIOTAP_BUFSIZE);
@@ -382,8 +389,8 @@ int audio2tap_get_total_len(struct audiotap *audiotap){
 }
 
 int audio2tap_get_current_pos(struct audiotap *audiotap){
-  if (audiotap->file == 0 || audiotap->tap == 0) return -1;
-  return tap_get_pos(audiotap->tap);
+  if (audiotap->file == 0) return -1;
+  return afTellFrame(audiotap->file, AF_DEFAULT_TRACK) - 2;
 }
 
 int32_t audio2tap_get_current_sound_level(struct audiotap *audiotap){
