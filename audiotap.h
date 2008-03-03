@@ -22,7 +22,8 @@ enum library_status {
   LIBRARY_UNINIT,
   LIBRARY_MISSING,
   LIBRARY_SYMBOLS_MISSING,
-  LIBRARY_OK
+  LIBRARY_OK,
+  LIBRARY_INIT_FAILED
 };
 
 struct audiotap_init_status {
