@@ -241,9 +241,9 @@ static enum library_status pablio_init(){
 #if (defined _MSC_VER)
     "portaudio_x86.dll"
 #elif (defined _WIN32 || defined __CYGWIN__) //not _MSC_VER
-#ifdef AUDIOFILE_COMPILED_WITH_CYGWIN_SHELL
+#ifdef PORTAUDIO_COMPILED_WITH_CYGWIN_SHELL
     "cygportaudio-2.dll"
-#else //not AUDIOFILE_COMPILED_WITH_CYGWIN_SHELL
+#else //not PORTAUDIO_COMPILED_WITH_CYGWIN_SHELL
     "libportaudio-2.dll"
 #endif //_WIN32 or __CYGWIN__,AUDIOFILE_COMPILED_WITH_CYGWIN_SHELL
 #else //not _MSC_VER, not _WIN32, not __CYGWIN__
