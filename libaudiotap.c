@@ -39,7 +39,7 @@ struct audiotap {
   int terminated;
 };
 
-struct audiotap_init_status status = {
+static struct audiotap_init_status status = {
   LIBRARY_UNINIT,
   LIBRARY_UNINIT
 };
@@ -448,8 +448,8 @@ int audio2tap_get_total_len(struct audiotap *audiotap){
 }
 
 int audio2tap_get_current_pos(struct audiotap *audiotap){
-  if (audiotap->file == 0) return -1;
-  return afTellFrame(audiotap->file, AF_DEFAULT_TRACK) - 2;
+   if (audiotap->file == 0 || audiotap->tap == 0) return -1;
+   return tap_get_pos(audiotap->tap);
 }
 
 int32_t audio2tap_get_current_sound_level(struct audiotap *audiotap){
