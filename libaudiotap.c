@@ -306,6 +306,15 @@ static enum library_status pablio_init(){
    }
 
 #if defined(WIN32)
+   Pa_StopStream = (void*)GetProcAddress(handle, "Pa_StopStream");
+#else
+   Pa_StopStream = dlsym(handle, "Pa_StopStream");
+#endif
+   if (!Pa_StopStream) {
+     return LIBRARY_SYMBOLS_MISSING;
+   }
+
+#if defined(WIN32)
    Pa_ReadStream = (void*)GetProcAddress(handle, "Pa_ReadStream");
 #else
    Pa_ReadStream = dlsym(handle, "Pa_ReadStream");
@@ -435,9 +444,11 @@ enum audiotap_status audio2tap_get_pulse(struct audiotap *audiotap, u_int32_t *p
         continue;
       }
     }
-    else
+    else{
       if (Pa_ReadStream(audiotap->pablio, audiotap->buffer, AUDIOTAP_BUFSIZE) != paNoError)
         return AUDIOTAP_LIBRARY_ERROR;
+      numframes=AUDIOTAP_BUFSIZE;
+    }
     tap_set_buffer(audiotap->tap, audiotap->buffer, numframes);
   }
 }
@@ -584,6 +595,7 @@ void tap2audio_close(struct audiotap *audiotap){
   }
   else if(audiotap->pablio != NULL){
     Pa_WriteStream(audiotap->pablio, audiotap->bufstart, audiotap->buffer - audiotap->bufstart);
+    Pa_StopStream(audiotap->pablio);
     Pa_CloseStream(audiotap->pablio);
   }
   tap_exit(audiotap->tap);
