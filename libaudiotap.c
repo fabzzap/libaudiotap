@@ -418,18 +418,19 @@ enum audiotap_status audio2tap_set_machine(struct audiotap *audiotap, u_int8_t m
 
 enum audiotap_status audio2tap_get_pulse(struct audiotap *audiotap, u_int32_t *pulse){
   int numframes;
+  static char has_flushed=0;
 
   while(1){
     if(audiotap->terminated)
       return AUDIOTAP_INTERRUPTED;
 
+    if (has_flushed)
+      return AUDIOTAP_EOF;
+    
     *pulse=tap_get_pulse(audiotap->tap);
     if(*pulse < TAP_NO_MORE_SAMPLES)
       return AUDIOTAP_OK;
 
-    if (tap_is_flushing(audiotap->tap))
-      return AUDIOTAP_EOF;
-    
     if (audiotap->buffer != NULL)
       free(audiotap->buffer);
     audiotap->buffer=malloc(AUDIOTAP_BUFSIZE*sizeof(int32_t));
@@ -440,8 +441,9 @@ enum audiotap_status audio2tap_get_pulse(struct audiotap *audiotap, u_int32_t *p
       if (numframes == -1) return AUDIOTAP_LIBRARY_ERROR;
       if (numframes == 0)
       {
-        tap_flush(audiotap->tap);
-        continue;
+        *pulse=tap_flush(audiotap->tap);
+        has_flushed=1;
+        return AUDIOTAP_OK;
       }
     }
     else{
