@@ -37,6 +37,7 @@ struct audiotap {
   int32_t *buffer, *bufstart;
   u_int32_t bufroom;
   int terminated;
+  int has_flushed;
 };
 
 static struct audiotap_init_status status = {
@@ -418,13 +419,12 @@ enum audiotap_status audio2tap_set_machine(struct audiotap *audiotap, u_int8_t m
 
 enum audiotap_status audio2tap_get_pulse(struct audiotap *audiotap, u_int32_t *pulse){
   int numframes;
-  static char has_flushed=0;
 
   while(1){
     if(audiotap->terminated)
       return AUDIOTAP_INTERRUPTED;
 
-    if (has_flushed)
+    if (audiotap->has_flushed)
       return AUDIOTAP_EOF;
     
     *pulse=tap_get_pulse(audiotap->tap);
@@ -442,7 +442,7 @@ enum audiotap_status audio2tap_get_pulse(struct audiotap *audiotap, u_int32_t *p
       if (numframes == 0)
       {
         *pulse=tap_flush(audiotap->tap);
-        has_flushed=1;
+        audiotap->has_flushed=1;
         return AUDIOTAP_OK;
       }
     }
