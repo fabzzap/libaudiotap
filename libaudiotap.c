@@ -447,13 +447,12 @@ enum audiotap_status audio2tap_get_pulse(struct audiotap *audiotap, u_int32_t *p
     if(audiotap->terminated)
       return AUDIOTAP_INTERRUPTED;
 
-    if (audiotap->has_flushed)
-      return AUDIOTAP_EOF;
-    
     *pulse=tap_get_pulse(audiotap->tap);
     if(*pulse < TAP_NO_MORE_SAMPLES)
       return AUDIOTAP_OK;
-
+    if (audiotap->has_flushed)
+      return AUDIOTAP_EOF;
+    
     if (audiotap->buffer != NULL)
       free(audiotap->buffer);
     audiotap->buffer=malloc(AUDIOTAP_BUFSIZE*sizeof(int32_t));
@@ -464,9 +463,8 @@ enum audiotap_status audio2tap_get_pulse(struct audiotap *audiotap, u_int32_t *p
       if (numframes == -1) return AUDIOTAP_LIBRARY_ERROR;
       if (numframes == 0)
       {
-        *pulse=tap_flush(audiotap->tap);
+        tap_flush(audiotap->tap);
         audiotap->has_flushed=1;
-        return AUDIOTAP_OK;
       }
     }
     else{
