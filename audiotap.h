@@ -16,6 +16,7 @@
  * See file LESSER-LICENSE.TXT for details.
  */
 
+#include <stdint.h>
 #include "tap_types.h"
 
 enum library_status {
@@ -39,39 +40,48 @@ enum audiotap_status{
   AUDIOTAP_NO_FILE,
   AUDIOTAP_LIBRARY_ERROR,
   AUDIOTAP_EOF,
-  AUDIOTAP_INTERRUPTED
+  AUDIOTAP_INTERRUPTED,
+  AUDIOTAP_WRONG_ARGUMENTS
 };
+
+/* Machine entry used in extended TAP header */
+#define TAP_MACHINE_C64 0
+#define TAP_MACHINE_VIC 1
+#define TAP_MACHINE_C16 2
+#define TAP_MACHINE_MAX 2
+
+/* Video standards */
+#define TAP_VIDEOTYPE_PAL  0
+#define TAP_VIDEOTYPE_NTSC 1
+#define TAP_VIDEOTYPE_MAX  1
 
 struct audiotap; /* hide structure of audiotap from applications */
 
 struct audiotap_init_status audiotap_initialize(void);
-enum audiotap_status audio2tap_open(struct audiotap **audiotap,
-				    char *file,
-					u_int32_t freq,
-				    u_int32_t min_duration,
-				    u_int32_t min_height,
-				    int inverted);
 enum audiotap_status audio2tap_open_with_machine(struct audiotap **audiotap,
                                                  char *file,
-                                                 u_int32_t freq,
-                                                 u_int32_t min_duration,
-                                                 u_int32_t min_height,
-                                                 int inverted,
-                                                 u_int8_t machine,
-                                                 u_int8_t videotype);
-enum audiotap_status audio2tap_set_machine(struct audiotap *audiotap, u_int8_t machine, u_int8_t videotype);
-enum audiotap_status audio2tap_get_pulse(struct audiotap *audiotap, u_int32_t *pulse);
+                                                 uint32_t freq,
+                                                 uint32_t min_duration,
+                                                 uint8_t sensitivity,
+                                                 uint8_t initial_threshold,
+                                                 enum tap_trigger inverted,
+                                                 uint8_t machine,
+                                                 uint8_t videotype);
+enum audiotap_status audio2tap_get_pulse(struct audiotap *audiotap, uint32_t *pulse);
 int audio2tap_get_total_len(struct audiotap *audiotap);
 int audio2tap_get_current_pos(struct audiotap *audiotap);
+int32_t audio2tap_get_current_sound_level(struct audiotap *audiotap);
 void audiotap_terminate(struct audiotap *audiotap);
 void audio2tap_close(struct audiotap *audiotap);
-enum audiotap_status tap2audio_open(struct audiotap **audiotap,
-				    char *file,
-				    int32_t volume,
-				    u_int32_t freq,
-				    int inverted,
-				    u_int8_t machine,
-				    u_int8_t videotype);
-enum audiotap_status tap2audio_set_pulse(struct audiotap *audiotap, u_int32_t pulse);
+
+enum audiotap_status tap2audio_open_with_machine(struct audiotap **audiotap
+                                                ,char *file
+                                                ,uint32_t volume
+                                                ,uint32_t freq
+                                                ,enum tap_trigger inverted
+                                                ,enum tapdec_waveform waveform
+                                                ,uint8_t machine
+                                                ,uint8_t videotype);
+enum audiotap_status tap2audio_set_pulse(struct audiotap *audiotap, uint32_t pulse);
 void tap2audio_close(struct audiotap *audiotap);
-int32_t audio2tap_get_current_sound_level(struct audiotap *audiotap);
+

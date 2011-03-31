@@ -25,7 +25,8 @@
 #include <sys/types.h>
 #include "audiofile.h"
 #include "pablio.h"
-#include "tap.h"
+#include "tapencoder.h"
+#include "tapdecoder.h"
 #include "audiotap.h"
 
 #define AUDIOTAP_BUFSIZE 512
@@ -33,16 +34,25 @@
 struct audiotap {
   PaStream *pablio;
   AFfilehandle file;
-  struct tap_t *tap;
-  int32_t *buffer, *bufstart;
-  u_int32_t bufroom;
+  struct tap_enc_t *tapenc;
+  struct tap_dec_t *tapdec;
+  int32_t *buffer, bufstart[AUDIOTAP_BUFSIZE];
+  uint32_t bufroom;
   int terminated;
   int has_flushed;
+  float factor;
+  uint32_t accumulated_samples;
 };
 
 static struct audiotap_init_status status = {
   LIBRARY_UNINIT,
   LIBRARY_UNINIT
+};
+
+static const float tap_clocks[][2]={
+  {985248,1022727}, /* C64 */
+  {1108405,1022727}, /* VIC */
+  {886724,894886}  /* C16 */
 };
 
 static enum library_status audiofile_init(){
@@ -347,132 +357,121 @@ struct audiotap_init_status audiotap_initialize(void){
   return status;
 }
 
-enum audiotap_status audio2tap_open(struct audiotap **audiotap,
-                                    char *file,
-                                    u_int32_t freq,
-                                    u_int32_t min_duration,
-                                    u_int32_t min_height,
-                                    int inverted){
-  return audio2tap_open_with_machine(audiotap,
-                                     file,
-                                     freq,
-                                     min_duration,
-                                     min_height,
-                                     inverted,
-                                     TAP_MACHINE_C64,
-                                     TAP_VIDEOTYPE_PAL);
+static void convert_samples(struct audiotap *audiotap, uint32_t *raw_samples){
+  audiotap->accumulated_samples += *raw_samples;
+  *raw_samples = (uint32_t)(*raw_samples * audiotap->factor);
 }
 
 enum audiotap_status audio2tap_open_with_machine(struct audiotap **audiotap,
                                                  char *file,
-                                                 u_int32_t freq,
-                                                 u_int32_t min_duration,
-                                                 u_int32_t min_height,
-                                                 int inverted,
-                                                 u_int8_t machine,
-                                                 u_int8_t videotype){
+                                                 uint32_t freq,
+                                                 uint32_t min_duration,
+                                                 uint8_t sensitivity,
+                                                 uint8_t initial_threshold,
+                                                 enum tap_trigger inverted,
+                                                 uint8_t machine,
+                                                 uint8_t videotype){
   struct audiotap *obj;
   enum audiotap_status error;
 
+  if (machine > TAP_MACHINE_MAX || videotype > TAP_VIDEOTYPE_MAX)
+    return AUDIOTAP_WRONG_ARGUMENTS;
+
   obj=calloc(1, sizeof(struct audiotap));
-  if (obj == NULL) return AUDIOTAP_NO_MEMORY;
+  if (obj == NULL)
+    return AUDIOTAP_NO_MEMORY;
 
-  if (file == NULL){
-    if (status.pablio_init_status != LIBRARY_OK){
-      free(obj);
-      return AUDIOTAP_LIBRARY_UNAVAILABLE;
+  do{
+    if (file == NULL){
+      if (status.pablio_init_status != LIBRARY_OK){
+        error = AUDIOTAP_LIBRARY_UNAVAILABLE;
+        break;
+      }
+      error=AUDIOTAP_LIBRARY_ERROR;
+      if (Pa_OpenDefaultStream(&obj->pablio, 1, 0, paInt32, freq, AUDIOTAP_BUFSIZE, NULL, NULL) != paNoError){
+        obj->pablio = NULL;
+        break;
+      }
+      if (Pa_StartStream(obj->pablio) != paNoError)
+        break;
     }
-    error=AUDIOTAP_LIBRARY_ERROR;
-    if (Pa_OpenDefaultStream(&obj->pablio, 1, 0, paInt32, freq, AUDIOTAP_BUFSIZE, NULL, NULL) != paNoError)
-      goto err;
-    if (Pa_StartStream(obj->pablio) != paNoError)
-    {
-      Pa_CloseStream(obj->pablio);
-      goto err;
+    else{
+      if (status.audiofile_init_status != LIBRARY_OK){
+        error = AUDIOTAP_LIBRARY_UNAVAILABLE;
+        break;
+      }
+      error=AUDIOTAP_NO_FILE;
+      obj->file=afOpenFile(file,"r", NULL);
+      if (obj->file == AF_NULL_FILEHANDLE)
+        break;
+      error=AUDIOTAP_LIBRARY_ERROR;
+      if ( (freq=(uint32_t)afGetRate(obj->file, AF_DEFAULT_TRACK)) == -1) /* freq passed by the user is discarded */
+        break;
+      if (afSetVirtualChannels(obj->file, AF_DEFAULT_TRACK, 1) == -1)
+        break;
+      if (afSetVirtualSampleFormat(obj->file, AF_DEFAULT_TRACK, AF_SAMPFMT_TWOSCOMP, 32) == -1)
+        break;
+      if (afGetVirtualFrameSize(obj->file, AF_DEFAULT_TRACK, 0) != 4)
+        break;
     }
-  }
-  else{
-    if (status.audiofile_init_status != LIBRARY_OK){
-      free(obj);
-      return AUDIOTAP_LIBRARY_UNAVAILABLE;
-    }
-    error=AUDIOTAP_NO_FILE;
-    obj->file=afOpenFile(file,"r", NULL);
-    if (obj->file == AF_NULL_FILEHANDLE)
-      goto err;
-    error=AUDIOTAP_LIBRARY_ERROR;
-    if ( (freq=afGetRate(obj->file, AF_DEFAULT_TRACK)) == -1) /* freq passed by the user is discarded */{
-      afCloseFile(obj->file);
-      goto err;
-    }
-    if (afSetVirtualChannels(obj->file, AF_DEFAULT_TRACK, 1) == -1){
-      afCloseFile(obj->file);
-      goto err;
-    }
-    if (afSetVirtualSampleFormat(obj->file, AF_DEFAULT_TRACK, AF_SAMPFMT_TWOSCOMP, 32) == -1){
-      afCloseFile(obj->file);
-      goto err;
-    }
-    if (afGetVirtualFrameSize(obj->file, AF_DEFAULT_TRACK, 0) != 4){
-      afCloseFile(obj->file);
-      goto err;
-    }
-  }
-  error=AUDIOTAP_NO_MEMORY;
-  if ((obj->tap=tap_fromaudio_init_with_machine(freq,
-                                                min_duration,
-                                                min_height,
-                                                inverted,
-                                                machine,
-                                                videotype))==NULL)
-    goto err;
-  *audiotap = obj;
-  return AUDIOTAP_OK;
+    error=AUDIOTAP_NO_MEMORY;
+    if ((obj->tapenc=tapenc_init(min_duration,
+                                 sensitivity,
+                                 initial_threshold,
+                                 inverted
+                                 ))==NULL)
+      break;
+    obj->bufroom = 0;
+    obj->factor = tap_clocks[machine][videotype] / freq;
+    error = AUDIOTAP_OK;
+  }while(0);
 
- err:
-  free(obj);
+  if (error == AUDIOTAP_OK)
+    *audiotap = obj;
+  else
+    audio2tap_close(obj);
+
   return error;
 }
 
-enum audiotap_status audio2tap_set_machine(struct audiotap *audiotap, u_int8_t machine, u_int8_t videotype){
-  if (tap_set_machine(audiotap->tap,machine,videotype)!=TAP_OK)
-    return AUDIOTAP_LIBRARY_ERROR;
-  return AUDIOTAP_OK;
-}
-
-enum audiotap_status audio2tap_get_pulse(struct audiotap *audiotap, u_int32_t *pulse){
+enum audiotap_status audio2tap_get_pulse(struct audiotap *audiotap, uint32_t *pulse){
   int numframes;
 
   while(1){
+    uint8_t got_pulse;
+    uint32_t done_now;
+
     if(audiotap->terminated)
       return AUDIOTAP_INTERRUPTED;
-
-    *pulse=tap_get_pulse(audiotap->tap);
-    if(*pulse < TAP_NO_MORE_SAMPLES)
-      return AUDIOTAP_OK;
     if (audiotap->has_flushed)
       return AUDIOTAP_EOF;
-    
-    if (audiotap->buffer != NULL)
-      free(audiotap->buffer);
-    audiotap->buffer=malloc(AUDIOTAP_BUFSIZE*sizeof(int32_t));
-    if (audiotap->buffer == NULL) return AUDIOTAP_NO_MEMORY;
 
+    if(audiotap->bufroom > 0){
+      done_now=tapenc_get_pulse(audiotap->tapenc, audiotap->buffer, audiotap->bufroom, &got_pulse, pulse);
+      audiotap->buffer += done_now;
+      audiotap->bufroom -= done_now;
+      if(got_pulse){
+        convert_samples(audiotap, pulse);
+        return AUDIOTAP_OK;
+      }
+    }
+    
     if (audiotap->file != NULL){
-      numframes=afReadFrames(audiotap->file, AF_DEFAULT_TRACK, audiotap->buffer, AUDIOTAP_BUFSIZE);
+      numframes=afReadFrames(audiotap->file, AF_DEFAULT_TRACK, audiotap->bufstart, sizeof(audiotap->bufstart));
       if (numframes == -1) return AUDIOTAP_LIBRARY_ERROR;
-      if (numframes == 0)
-      {
-        tap_flush(audiotap->tap);
+      if (numframes == 0){
+        *pulse = tapenc_flush(audiotap->tapenc);
+        convert_samples(audiotap, pulse);
         audiotap->has_flushed=1;
+        return AUDIOTAP_OK;
       }
     }
     else{
       if (Pa_ReadStream(audiotap->pablio, audiotap->buffer, AUDIOTAP_BUFSIZE) != paNoError)
         return AUDIOTAP_LIBRARY_ERROR;
-      numframes=AUDIOTAP_BUFSIZE;
+      numframes=sizeof(audiotap->bufstart);
     }
-    tap_set_buffer(audiotap->tap, audiotap->buffer, numframes);
+    audiotap->bufroom = numframes;
   }
 }
 
@@ -482,14 +481,14 @@ int audio2tap_get_total_len(struct audiotap *audiotap){
 }
 
 int audio2tap_get_current_pos(struct audiotap *audiotap){
-   if (audiotap->file == 0 || audiotap->tap == 0) return -1;
-   return tap_get_pos(audiotap->tap);
+   if (audiotap->file == 0) return -1;
+   return audiotap->accumulated_samples;
 }
 
 int32_t audio2tap_get_current_sound_level(struct audiotap *audiotap){
-  if (!audiotap->tap)
+  if (!audiotap->tapenc)
     return -1;
-  return tap_get_max(audiotap->tap);
+  return tapenc_get_max(audiotap->tapenc);
 };
 
 void audiotap_terminate(struct audiotap *audiotap){
@@ -497,19 +496,24 @@ void audiotap_terminate(struct audiotap *audiotap){
 }
 
 void audio2tap_close(struct audiotap *audiotap){
-  if(audiotap->file != 0)
+  if(audiotap->file != AF_NULL_FILEHANDLE)
     afCloseFile(audiotap->file);
-  else if(audiotap->pablio != NULL){
+  if(audiotap->pablio != NULL){
     Pa_StopStream(audiotap->pablio);
     Pa_CloseStream(audiotap->pablio);
   }
-  tap_exit(audiotap->tap);
-  if (audiotap->buffer)
-    free(audiotap->buffer);
+  free(audiotap->tapenc);
   free(audiotap);
 }
 
-enum audiotap_status tap2audio_open(struct audiotap **audiotap, char *file, int32_t volume, u_int32_t freq, int inverted, u_int8_t machine, u_int8_t videotype){
+enum audiotap_status tap2audio_open_with_machine(struct audiotap **audiotap
+                                                 ,char *file
+                                                 ,uint32_t volume
+                                                 ,uint32_t freq
+                                                 ,enum tap_trigger inverted
+                                                 ,enum tapdec_waveform waveform
+                                                 ,uint8_t machine
+                                                 ,uint8_t videotype){
   struct audiotap *obj;
   enum audiotap_status error;
   AFfilesetup setup;
@@ -517,73 +521,71 @@ enum audiotap_status tap2audio_open(struct audiotap **audiotap, char *file, int3
   obj=calloc(1, sizeof(struct audiotap));
   if (obj == NULL) return AUDIOTAP_NO_MEMORY;
 
-  obj->bufstart=obj->buffer = malloc(AUDIOTAP_BUFSIZE*sizeof(int32_t));
-  if (obj->buffer == NULL) {
-    free(obj);
-    return AUDIOTAP_NO_MEMORY;
-  }
-  obj->bufroom=AUDIOTAP_BUFSIZE;
+  obj->buffer = obj->bufstart;
+  obj->bufroom = sizeof(obj->bufstart) / sizeof(obj->bufstart[0]);
 
-  if (file == NULL){
-    if (status.pablio_init_status != LIBRARY_OK){
-      error = AUDIOTAP_LIBRARY_UNAVAILABLE;
-      goto err;
+  do{
+    if (file == NULL){
+      if (status.pablio_init_status != LIBRARY_OK){
+        error = AUDIOTAP_LIBRARY_UNAVAILABLE;
+        break;
+      }
+      error=AUDIOTAP_LIBRARY_ERROR;
+      if (Pa_OpenDefaultStream(&obj->pablio, 0, 1, paInt32, freq, AUDIOTAP_BUFSIZE, NULL, NULL) != paNoError){
+        obj->pablio = NULL;
+        break;
+      }
+      if (Pa_StartStream(obj->pablio) != paNoError)
+        break;
     }
-    error=AUDIOTAP_LIBRARY_ERROR;
-    if (Pa_OpenDefaultStream(&obj->pablio, 0, 1, paInt32, freq, AUDIOTAP_BUFSIZE, NULL, NULL) != paNoError)
-      goto err;
-    if (Pa_StartStream(obj->pablio) != paNoError)
-    {
-      Pa_CloseStream(obj->pablio);
-      goto err;
-    }
-  }
-  else{
-    if (status.audiofile_init_status != LIBRARY_OK){
-  error = AUDIOTAP_LIBRARY_UNAVAILABLE;
-  goto err;
+    else{
+      if (status.audiofile_init_status != LIBRARY_OK){
+        error = AUDIOTAP_LIBRARY_UNAVAILABLE;
+        break;
+      }
+      error=AUDIOTAP_NO_MEMORY;
+      setup=afNewFileSetup();
+      if (setup == AF_NULL_FILESETUP)
+        break;
+      afInitRate(setup, AF_DEFAULT_TRACK, freq);
+      afInitChannels(setup, AF_DEFAULT_TRACK, 1);
+      afInitFileFormat(setup, AF_FILE_WAVE);
+      afInitSampleFormat(setup, AF_DEFAULT_TRACK, AF_SAMPFMT_UNSIGNED, 8);
+      obj->file=afOpenFile(file,"w", setup);
+      afFreeFileSetup(setup);
+      if (obj->file == AF_NULL_FILEHANDLE)
+        break;
+      error=AUDIOTAP_LIBRARY_ERROR;
+      if (afSetVirtualSampleFormat(obj->file, AF_DEFAULT_TRACK, AF_SAMPFMT_TWOSCOMP, 32) == -1)
+        break;
+      if (afGetVirtualFrameSize(obj->file, AF_DEFAULT_TRACK, 0) != 4)
+        break;
     }
     error=AUDIOTAP_NO_MEMORY;
-    setup=afNewFileSetup();
-    if (setup == AF_NULL_FILESETUP)
-      goto err;
-    afInitRate(setup, AF_DEFAULT_TRACK, freq);
-    afInitChannels(setup, AF_DEFAULT_TRACK, 1);
-    afInitFileFormat(setup, AF_FILE_WAVE);
-    afInitSampleFormat(setup, AF_DEFAULT_TRACK, AF_SAMPFMT_UNSIGNED, 8);
-    obj->file=afOpenFile(file,"w", setup);
-    afFreeFileSetup(setup);
-    if (obj->file == AF_NULL_FILEHANDLE)
-      goto err;
-    error=AUDIOTAP_LIBRARY_ERROR;
-    if (afSetVirtualSampleFormat(obj->file, AF_DEFAULT_TRACK, AF_SAMPFMT_TWOSCOMP, 32) == -1)
-      goto err;
-    if (afGetVirtualFrameSize(obj->file, AF_DEFAULT_TRACK, 0) != 4)
-      goto err;
-  }
-  error=AUDIOTAP_NO_MEMORY;
-  if ((obj->tap=tap_toaudio_init_with_machine(freq, volume, inverted,machine,videotype))==NULL)
-    goto err;
+    if ((obj->tapdec=tapdec_init(volume, inverted, waveform))==NULL)
+      break;
 
-  *audiotap = obj;
-  return AUDIOTAP_OK;
+    error = AUDIOTAP_OK;
+  }while(0);
 
- err:
-  free(obj->buffer);
-  free(obj);
+  if (error == AUDIOTAP_OK)
+    *audiotap = obj;
+  else
+    tap2audio_close(obj);
+
   return error;
 }
 
-enum audiotap_status tap2audio_set_pulse(struct audiotap *audiotap, u_int32_t pulse){
+enum audiotap_status tap2audio_set_pulse(struct audiotap *audiotap, uint32_t pulse){
   int numframes, numwritten;
 
-  tap_set_pulse(audiotap->tap, pulse);
+  tapdec_set_pulse(audiotap->tapdec, pulse);
 
   while(1){
     if(audiotap->terminated)
       return AUDIOTAP_INTERRUPTED;
 
-    numframes=tap_get_buffer(audiotap->tap, audiotap->buffer, audiotap->bufroom);
+    numframes=tapdec_get_buffer(audiotap->tapdec, audiotap->buffer, audiotap->bufroom);
     audiotap->buffer += numframes;
     audiotap->bufroom -= numframes;
 
@@ -598,25 +600,21 @@ enum audiotap_status tap2audio_set_pulse(struct audiotap *audiotap, u_int32_t pu
       if(Pa_WriteStream(audiotap->pablio, audiotap->bufstart, audiotap->buffer - audiotap->bufstart) != paNoError)
         return AUDIOTAP_LIBRARY_ERROR;
     }
-
-    free(audiotap->bufstart);
-    audiotap->bufstart=audiotap->buffer=malloc(AUDIOTAP_BUFSIZE*sizeof(int32_t));
-    if (audiotap->buffer == NULL) return AUDIOTAP_NO_MEMORY;
-    audiotap->bufroom = AUDIOTAP_BUFSIZE;
+    audiotap->buffer = audiotap->bufstart;
+    audiotap->bufroom = sizeof(audiotap->bufstart) / sizeof(audiotap->bufstart[0]);
   }
 }
 
 void tap2audio_close(struct audiotap *audiotap){
-  if(audiotap->file != 0) {
-  afWriteFrames(audiotap->file, AF_DEFAULT_TRACK, audiotap->bufstart, audiotap->buffer - audiotap->bufstart);
-  afCloseFile(audiotap->file);
+  if(audiotap->file != AF_NULL_FILEHANDLE) {
+    afWriteFrames(audiotap->file, AF_DEFAULT_TRACK, audiotap->bufstart, audiotap->bufroom);
+    afCloseFile(audiotap->file);
   }
   else if(audiotap->pablio != NULL){
-    Pa_WriteStream(audiotap->pablio, audiotap->bufstart, audiotap->buffer - audiotap->bufstart);
+    Pa_WriteStream(audiotap->pablio, audiotap->bufstart, audiotap->bufroom);
     Pa_StopStream(audiotap->pablio);
     Pa_CloseStream(audiotap->pablio);
   }
-  tap_exit(audiotap->tap);
-  free(audiotap->bufstart);
+  free(audiotap->tapdec);
   free(audiotap);
 }
