@@ -523,6 +523,7 @@ enum audiotap_status tap2audio_open_with_machine(struct audiotap **audiotap
 
   obj->buffer = obj->bufstart;
   obj->bufroom = sizeof(obj->bufstart) / sizeof(obj->bufstart[0]);
+  obj->factor = tap_clocks[machine][videotype] / freq;
 
   do{
     if (file == NULL){
@@ -579,7 +580,7 @@ enum audiotap_status tap2audio_open_with_machine(struct audiotap **audiotap
 enum audiotap_status tap2audio_set_pulse(struct audiotap *audiotap, uint32_t pulse){
   int numframes, numwritten;
 
-  tapdec_set_pulse(audiotap->tapdec, pulse);
+  tapdec_set_pulse(audiotap->tapdec, (uint32_t)(pulse / audiotap->factor));
 
   while(1){
     if(audiotap->terminated)
