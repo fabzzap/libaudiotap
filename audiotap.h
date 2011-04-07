@@ -29,7 +29,9 @@ enum library_status {
 
 struct audiotap_init_status {
   enum library_status audiofile_init_status;
-  enum library_status pablio_init_status;
+  enum library_status portaudio_init_status;
+  enum library_status tapencoder_init_status;
+  enum library_status tapdecoder_init_status;
 };
 
 enum audiotap_status{
@@ -41,7 +43,8 @@ enum audiotap_status{
   AUDIOTAP_LIBRARY_ERROR,
   AUDIOTAP_EOF,
   AUDIOTAP_INTERRUPTED,
-  AUDIOTAP_WRONG_ARGUMENTS
+  AUDIOTAP_WRONG_ARGUMENTS,
+  AUDIOTAP_WRONG_FILETYPE
 };
 
 /* Machine entry used in extended TAP header */
