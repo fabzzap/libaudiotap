@@ -567,7 +567,7 @@ static enum audiotap_status audio2tap_open_common(struct audiotap **audiotap,
   return error;
 }
 
-enum audiotap_status tapfile_get_pulse(struct audiotap *audiotap, uint32_t *pulse, uint32_t *raw_pulse){
+static enum audiotap_status tapfile_get_pulse(struct audiotap *audiotap, uint32_t *pulse, uint32_t *raw_pulse){
   struct tap_handle *handle = (struct tap_handle *)audiotap->priv;
   uint8_t byte, threebytes[3];
 
@@ -593,7 +593,7 @@ enum audiotap_status tapfile_get_pulse(struct audiotap *audiotap, uint32_t *puls
   }
 }
 
-int tapfile_get_total_len(struct audiotap *audiotap){
+static int tapfile_get_total_len(struct audiotap *audiotap){
   struct tap_handle *handle = (struct tap_handle *)audiotap->priv;
   struct stat stats;
 
@@ -602,7 +602,7 @@ int tapfile_get_total_len(struct audiotap *audiotap){
   return stats.st_size;
 }
 
-int tapfile_get_current_pos(struct audiotap *audiotap){
+static int tapfile_get_current_pos(struct audiotap *audiotap){
   struct tap_handle *handle = (struct tap_handle *)audiotap->priv;
   long res;
 
@@ -611,14 +611,14 @@ int tapfile_get_current_pos(struct audiotap *audiotap){
   return (int)(res - 1);
 };
 
-void tapfile_close(void *priv){
+static void tapfile_close(void *priv){
   struct tap_handle *handle = (struct tap_handle *)priv;
 
   fclose(handle->file);
   free(handle);
 }
 
-const struct audio2tap_functions tapfile_read_functions = {
+static const struct audio2tap_functions tapfile_read_functions = {
   tapfile_get_pulse,
   NULL,
   tapfile_get_total_len,
@@ -637,7 +637,7 @@ static enum audiotap_status tapfile_init(struct audiotap **audiotap,
 
 
   do {
-    char file_header[strlen(c64_tap_header)];
+    char file_header[12];
     handle->file = fopen(file, "rb");
     if (handle->file == NULL){
       err = errno == ENOENT ? AUDIOTAP_NO_FILE : AUDIOTAP_LIBRARY_ERROR;
@@ -674,9 +674,7 @@ static enum audiotap_status tapfile_init(struct audiotap **audiotap,
   return err;
 }
 
-enum audiotap_status audio_get_pulse(struct audiotap *audiotap, uint32_t *pulse, uint32_t *raw_pulse){
-  int numframes;
-
+static enum audiotap_status audio_get_pulse(struct audiotap *audiotap, uint32_t *pulse, uint32_t *raw_pulse){
   while(1){
     uint8_t got_pulse;
     uint32_t done_now;
@@ -709,7 +707,7 @@ enum audiotap_status audio_get_pulse(struct audiotap *audiotap, uint32_t *pulse,
   }
 }
 
-enum audiotap_status audiofile_set_buffer(void *priv, int32_t *buffer, uint32_t bufsize, uint32_t *numframes) {
+static enum audiotap_status audiofile_set_buffer(void *priv, int32_t *buffer, uint32_t bufsize, uint32_t *numframes) {
   *numframes=afReadFrames((AFfilehandle)priv, AF_DEFAULT_TRACK, buffer, bufsize);
   return *numframes == -1 ? AUDIOTAP_LIBRARY_ERROR : AUDIOTAP_OK;
 }
@@ -718,11 +716,11 @@ static void audiofile_close(void *priv){
   afCloseFile((AFfilehandle)priv);
 }
 
-int audiofile_get_total_len(struct audiotap *audiotap){
+static int audiofile_get_total_len(struct audiotap *audiotap){
   return (int)(afGetFrameCount((AFfilehandle)audiotap->priv, AF_DEFAULT_TRACK));
 }
 
-int audiofile_get_current_pos(struct audiotap *audiotap){
+static int audiofile_get_current_pos(struct audiotap *audiotap){
    return audiotap->accumulated_samples;
 }
 
@@ -734,7 +732,7 @@ const struct audio2tap_functions audiofile_read_functions = {
   audiofile_close
 };
 
-enum audiotap_status audiofile_read_init(struct audiotap **audiotap,
+static enum audiotap_status audiofile_read_init(struct audiotap **audiotap,
                                                  char *file,
                                                  struct tapdec_params *params,
                                                  uint8_t machine,
@@ -778,7 +776,6 @@ enum audiotap_status audio2tap_open_from_file(struct audiotap **audiotap,
                                               struct tapdec_params *params,
                                               uint8_t machine,
                                               uint8_t videotype){
-  struct audiotap *obj;
   enum audiotap_status error;
 
   if (machine > TAP_MACHINE_MAX || videotype > TAP_VIDEOTYPE_MAX)
@@ -796,7 +793,7 @@ enum audiotap_status audio2tap_open_from_file(struct audiotap **audiotap,
                         videotype);
 }
 
-enum audiotap_status portaudio_set_buffer(void *priv, int32_t *buffer, uint32_t bufsize, uint32_t *numframes){
+static enum audiotap_status portaudio_set_buffer(void *priv, int32_t *buffer, uint32_t bufsize, uint32_t *numframes){
   if (Pa_ReadStream((PaStream*)priv, buffer, bufsize) != paNoError)
     return AUDIOTAP_LIBRARY_ERROR;
   *numframes=bufsize;
@@ -808,15 +805,15 @@ static void portaudio_close(void *priv){
   Pa_CloseStream((PaStream*)priv);
 }
 
-int portaudio_get_total_len(struct audiotap *audiotap){
+static int portaudio_get_total_len(struct audiotap *audiotap){
   return -1;
 }
 
-int portaudio_get_current_pos(struct audiotap *audiotap){
+static int portaudio_get_current_pos(struct audiotap *audiotap){
   return -1;
 }
 
-const struct audio2tap_functions portaudio_read_functions = {
+static const struct audio2tap_functions portaudio_read_functions = {
   audio_get_pulse,
   portaudio_set_buffer,
   portaudio_get_total_len,
@@ -866,7 +863,7 @@ int32_t audio2tap_get_current_sound_level(struct audiotap *audiotap){
   if (!audiotap->tapenc)
     return -1;
   return tapenc_get_max(audiotap->tapenc);
-};
+}
 
 void audiotap_terminate(struct audiotap *audiotap){
   audiotap->terminated = 1;
@@ -887,7 +884,7 @@ static void tapfile_set_pulse(struct audiotap *audiotap, uint32_t pulse){
   handle->next_pulse = pulse;
 }
 
-uint32_t tapfile_get_buffer(struct audiotap *audiotap){
+static uint32_t tapfile_get_buffer(struct audiotap *audiotap){
   struct tap_handle *handle = (struct tap_handle *)audiotap->priv;
   uint32_t max_in_one_byte = 0x800;
   uint32_t overflow_value = handle->version == 0 ? max_in_one_byte : 0xFFFFFF;
@@ -994,11 +991,11 @@ static const struct tap2audio_functions tapfile_write_functions = {
   tapfile_write_close,
 };
 
-void audio_set_pulse(struct audiotap *audiotap, uint32_t pulse){
+static void audio_set_pulse(struct audiotap *audiotap, uint32_t pulse){
   tapdec_set_pulse(audiotap->tapdec, (uint32_t)(pulse / audiotap->factor));
 }
 
-uint32_t audio_get_buffer(struct audiotap *audiotap){
+static uint32_t audio_get_buffer(struct audiotap *audiotap){
   return tapdec_get_buffer(audiotap->tapdec, (int32_t*)audiotap->bufstart, (uint32_t)(sizeof(audiotap->bufstart) / sizeof(uint32_t)) );
 }
 
