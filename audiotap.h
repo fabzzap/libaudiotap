@@ -63,7 +63,12 @@ struct audiotap; /* hide structure of audiotap from applications */
 struct audiotap_init_status audiotap_initialize(void);
 
 
-
+struct tapdec_params {
+  uint32_t min_duration;
+  uint8_t sensitivity;
+  uint8_t initial_threshold;
+  enum tap_trigger inverted;
+};
 
 enum audiotap_status audio2tap_open_from_file(struct audiotap **audiotap,
                                               char *file,

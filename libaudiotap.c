@@ -514,13 +514,6 @@ static uint32_t convert_samples(struct audiotap *audiotap, uint32_t raw_samples)
   return (uint32_t)(raw_samples * audiotap->factor);
 }
 
-struct tapdec_params {
-  uint32_t min_duration;
-  uint8_t sensitivity;
-  uint8_t initial_threshold;
-  enum tap_trigger inverted;
-};
-
 static enum audiotap_status audio2tap_open_common(struct audiotap **audiotap,
                                            uint32_t freq,
                                            struct tapdec_params *tapdec_params,
