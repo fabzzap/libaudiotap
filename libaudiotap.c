@@ -668,16 +668,11 @@ static enum audiotap_status tapfile_init(struct audiotap **audiotap,
 }
 
 static enum audiotap_status audio_get_pulse(struct audiotap *audiotap, uint32_t *pulse, uint32_t *raw_pulse){
-  while(1){
+  while(!audiotap->terminated && !audiotap->has_flushed){
     uint8_t got_pulse;
     uint32_t done_now;
     enum audiotap_status error;
     uint32_t numframes;
-
-    if(audiotap->terminated)
-      return AUDIOTAP_INTERRUPTED;
-    if (audiotap->has_flushed)
-      return AUDIOTAP_EOF;
 
     done_now=tapenc_get_pulse(audiotap->tapenc, (int32_t*)audiotap->buffer, audiotap->bufroom, &got_pulse, raw_pulse);
     audiotap->buffer += done_now * sizeof(int32_t);
@@ -699,6 +694,7 @@ static enum audiotap_status audio_get_pulse(struct audiotap *audiotap, uint32_t 
     audiotap->buffer = audiotap->bufstart;
     audiotap->bufroom = numframes;
   }
+  return audiotap->terminated ? AUDIOTAP_INTERRUPTED : AUDIOTAP_EOF;
 }
 
 static enum audiotap_status audiofile_set_buffer(void *priv, int32_t *buffer, uint32_t bufsize, uint32_t *numframes) {
@@ -1180,7 +1176,7 @@ enum audiotap_status tap2audio_set_pulse(struct audiotap *audiotap, uint32_t pul
   audiotap->tap2audio_functions->set_pulse(audiotap, pulse);
 
   while(error == AUDIOTAP_OK && (numframes = audiotap->tap2audio_functions->get_buffer(audiotap)) > 0){
-  error = audiotap->terminated ? AUDIOTAP_INTERRUPTED :
+    error = audiotap->terminated ? AUDIOTAP_INTERRUPTED :
     audiotap->tap2audio_functions->dump_buffer(audiotap->bufstart, numframes, audiotap->priv);
   }
 
