@@ -1144,6 +1144,8 @@ enum audiotap_status tap2audio_open_to_tapfile(struct audiotap **audiotap
   do{
     if (fwrite(tap_header, strlen(tap_header), 1, handle->file) != 1)
       break;
+    if (fwrite(&version, 1, 1, handle->file) != 1)
+      break;
     if (fwrite(&machine, 1, 1, handle->file) != 1)
       break;
     if (fwrite(&videotype, 1, 1, handle->file) != 1)
