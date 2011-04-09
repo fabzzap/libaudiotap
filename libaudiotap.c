@@ -696,6 +696,7 @@ static enum audiotap_status audio_get_pulse(struct audiotap *audiotap, uint32_t 
       audiotap->has_flushed=1;
       return AUDIOTAP_OK;
     }
+    audiotap->buffer = audiotap->bufstart;
     audiotap->bufroom = numframes;
   }
 }
@@ -779,7 +780,7 @@ enum audiotap_status audio2tap_open_from_file(struct audiotap **audiotap,
     return AUDIOTAP_OK;
   if (error != AUDIOTAP_WRONG_FILETYPE)
     return error;
-  return audiofile_init(audiotap,
+  return audiofile_read_init(audiotap,
                         file,
                         params,
                         machine,
