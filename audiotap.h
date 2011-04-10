@@ -73,8 +73,9 @@ struct tapdec_params {
 enum audiotap_status audio2tap_open_from_file(struct audiotap **audiotap,
                                               char *file,
                                               struct tapdec_params *params,
-                                              uint8_t machine,
-                                              uint8_t videotype);
+                                              uint8_t *machine,
+                                              uint8_t *videotype,
+                                              uint8_t *semiwaves);
 
 enum audiotap_status audio2tap_from_soundcard(struct audiotap **audiotap,
                                               uint32_t freq,

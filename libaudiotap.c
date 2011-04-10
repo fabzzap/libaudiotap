@@ -579,9 +579,10 @@ static enum audiotap_status tapfile_get_pulse(struct audiotap *audiotap, uint32_
     else{
       if (fread(threebytes, 3, 1, handle->file) != 1)
         return AUDIOTAP_EOF;
-      return threebytes[0]        +
-            (threebytes[1] <<  8) +
-            (threebytes[2] << 16);
+      *raw_pulse = *pulse = threebytes[0]        +
+                           (threebytes[1] <<  8) +
+                           (threebytes[2] << 16);
+      return AUDIOTAP_OK;
     }
   }
 }
@@ -620,7 +621,10 @@ static const struct audio2tap_functions tapfile_read_functions = {
 };
 
 static enum audiotap_status tapfile_init(struct audiotap **audiotap,
-                                         char *file){
+                                         char *file,
+                                         uint8_t *machine,
+                                         uint8_t *videotype,
+                                         uint8_t *semiwaves){
   struct tap_handle *handle;
   enum audiotap_status err;
 
@@ -649,11 +653,17 @@ static enum audiotap_status tapfile_init(struct audiotap **audiotap,
       break;
     if (handle->version > 2)
       break;
+    if (fread(machine, 1, 1, handle->file) < 1)
+      break;
+    if (fread(videotype, 1, 1, handle->file) < 1)
+      break;
     if (fseek(handle->file, 20, SEEK_SET) != 0)
       break;
     err = AUDIOTAP_OK;
   } while (0);
-  if (err == AUDIOTAP_OK)
+  if (err == AUDIOTAP_OK){
+    if (semiwaves != NULL)
+      *semiwaves = handle->version == 2;
     return audio2tap_open_common(audiotap,
                                  0,
                                  NULL,
@@ -661,6 +671,7 @@ static enum audiotap_status tapfile_init(struct audiotap **audiotap,
                                  0, /*unused*/
                                  &tapfile_read_functions,
                                  handle);
+  }
   if (handle->file != NULL)
     fclose(handle->file);
   free(handle);
@@ -764,23 +775,25 @@ static enum audiotap_status audiofile_read_init(struct audiotap **audiotap,
 enum audiotap_status audio2tap_open_from_file(struct audiotap **audiotap,
                                               char *file,
                                               struct tapdec_params *params,
-                                              uint8_t machine,
-                                              uint8_t videotype){
+                                              uint8_t *machine,
+                                              uint8_t *videotype,
+                                              uint8_t *semiwaves){
   enum audiotap_status error;
 
-  if (machine > TAP_MACHINE_MAX || videotype > TAP_VIDEOTYPE_MAX)
+  if (machine == NULL || videotype == NULL)
     return AUDIOTAP_WRONG_ARGUMENTS;
-
-  error = tapfile_init(audiotap, file);
+  error = tapfile_init(audiotap, file, machine, videotype, semiwaves);
   if (error == AUDIOTAP_OK)
     return AUDIOTAP_OK;
   if (error != AUDIOTAP_WRONG_FILETYPE)
     return error;
+  if (params == NULL)
+    return AUDIOTAP_WRONG_ARGUMENTS;
   return audiofile_read_init(audiotap,
                         file,
                         params,
-                        machine,
-                        videotype);
+                        *machine,
+                        *videotype);
 }
 
 static enum audiotap_status portaudio_set_buffer(void *priv, int32_t *buffer, uint32_t bufsize, uint32_t *numframes){
@@ -990,7 +1003,7 @@ static uint32_t audio_get_buffer(struct audiotap *audiotap){
 }
 
 static enum audiotap_status audiofile_dump_buffer(uint8_t *buffer, uint32_t bufsize, void *priv){
-  return (afWriteFrames((AFfilehandle)priv, AF_DEFAULT_TRACK, buffer, (int)(bufsize/4)) == bufsize/4) ? AUDIOTAP_OK : AUDIOTAP_LIBRARY_ERROR;
+  return (afWriteFrames((AFfilehandle)priv, AF_DEFAULT_TRACK, buffer, (int)bufsize) == bufsize) ? AUDIOTAP_OK : AUDIOTAP_LIBRARY_ERROR;
 }
 
 static const struct tap2audio_functions audiofile_write_functions = {
@@ -1001,7 +1014,7 @@ static const struct tap2audio_functions audiofile_write_functions = {
 };
 
 static enum audiotap_status portaudio_dump_buffer(uint8_t *buffer, uint32_t bufsize, void *priv){
-  return Pa_WriteStream((PaStream*)priv, buffer, bufsize/4) == paNoError ? AUDIOTAP_OK : AUDIOTAP_LIBRARY_ERROR;
+  return Pa_WriteStream((PaStream*)priv, buffer, bufsize) == paNoError ? AUDIOTAP_OK : AUDIOTAP_LIBRARY_ERROR;
 }
 
 static const struct tap2audio_functions portaudio_write_functions = {
