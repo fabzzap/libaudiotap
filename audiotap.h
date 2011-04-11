@@ -16,6 +16,9 @@
  * See file LESSER-LICENSE.TXT for details.
  */
 
+#ifndef AUDIOTAP_H
+#define AUDIOTAP_H
+
 #include <stdint.h>
 #include "tap_types.h"
 
@@ -123,3 +126,5 @@ enum audiotap_status tap2audio_open_to_tapfile(struct audiotap **audiotap
 enum audiotap_status tap2audio_set_pulse(struct audiotap *audiotap, uint32_t pulse);
 
 void tap2audio_close(struct audiotap *audiotap);
+
+#endif /*AUDIOTAP_H*/
