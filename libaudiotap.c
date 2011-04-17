@@ -74,6 +74,8 @@ struct audiotap {
 
 static struct audiotap_init_status status = {
   LIBRARY_UNINIT,
+  LIBRARY_UNINIT,
+  LIBRARY_UNINIT,
   LIBRARY_UNINIT
 };
 
@@ -516,12 +518,12 @@ static uint32_t convert_samples(struct audiotap *audiotap, uint32_t raw_samples)
 
 static enum audiotap_status audio2tap_open_common(struct audiotap **audiotap,
                                            uint32_t freq,
-                                           struct tapdec_params *tapdec_params,
+                                           struct tapenc_params *tapenc_params,
                                            uint8_t machine,
                                            uint8_t videotype,
                                            const struct audio2tap_functions *audio2tap_functions,
                                            void *priv){
-  struct audiotap *obj;
+  struct audiotap *obj = NULL;
   enum audiotap_status error = AUDIOTAP_WRONG_ARGUMENTS;
 
   do{
@@ -536,12 +538,12 @@ static enum audiotap_status audio2tap_open_common(struct audiotap **audiotap,
     obj->priv = priv;
     obj->audio2tap_functions = audio2tap_functions;
 
-    if (tapdec_params != NULL){
+    if (tapenc_params != NULL){
       if (
-          (obj->tapenc=tapenc_init(tapdec_params->min_duration,
-                                   tapdec_params->sensitivity,
-                                   tapdec_params->initial_threshold,
-                                   tapdec_params->inverted
+          (obj->tapenc=tapenc_init(tapenc_params->min_duration,
+                                   tapenc_params->sensitivity,
+                                   tapenc_params->initial_threshold,
+                                   tapenc_params->inverted
                                    )
           )==NULL
          )
@@ -735,7 +737,7 @@ const struct audio2tap_functions audiofile_read_functions = {
 
 static enum audiotap_status audiofile_read_init(struct audiotap **audiotap,
                                                  char *file,
-                                                 struct tapdec_params *params,
+                                                 struct tapenc_params *params,
                                                  uint8_t machine,
                                                  uint8_t videotype){
   uint32_t freq;
@@ -774,7 +776,7 @@ static enum audiotap_status audiofile_read_init(struct audiotap **audiotap,
 
 enum audiotap_status audio2tap_open_from_file(struct audiotap **audiotap,
                                               char *file,
-                                              struct tapdec_params *params,
+                                              struct tapenc_params *params,
                                               uint8_t *machine,
                                               uint8_t *videotype,
                                               uint8_t *semiwaves){
@@ -826,7 +828,7 @@ static const struct audio2tap_functions portaudio_read_functions = {
 
 enum audiotap_status audio2tap_from_soundcard(struct audiotap **audiotap,
                                               uint32_t freq,
-                                              struct tapdec_params *params,
+                                              struct tapenc_params *params,
                                               uint8_t machine,
                                               uint8_t videotype){
   enum audiotap_status error=AUDIOTAP_LIBRARY_ERROR;
@@ -1025,9 +1027,7 @@ static const struct tap2audio_functions portaudio_write_functions = {
 };
 
 static enum audiotap_status tap2audio_open_common(struct audiotap **audiotap
-                                                 ,uint32_t volume
-                                                 ,enum tap_trigger inverted
-                                                 ,enum tapdec_waveform waveform
+                                                 ,struct tapdec_params *params
                                                  ,uint32_t freq
                                                  ,uint8_t machine
                                                  ,uint8_t videotype
@@ -1041,8 +1041,8 @@ static enum audiotap_status tap2audio_open_common(struct audiotap **audiotap
     obj->factor = tap_clocks[machine][videotype] / freq;
     obj->priv = priv;
     obj->tap2audio_functions = functions;
-    if (freq == 0 ||
-         ( (obj->tapdec = tapdec_init(volume, inverted, waveform)) != NULL)
+    if (params == NULL ||
+         ( (obj->tapdec = tapdec_init(params->volume, params->inverted, params->waveform)) != NULL)
        )
       error = AUDIOTAP_OK;
   }
@@ -1059,12 +1059,10 @@ static enum audiotap_status tap2audio_open_common(struct audiotap **audiotap
 }
 
 enum audiotap_status tap2audio_open_to_soundcard(struct audiotap **audiotap
-                                                 ,uint32_t volume
-                                                 ,uint32_t freq
-                                                 ,enum tap_trigger inverted
-                                                 ,enum tapdec_waveform waveform
-                                                 ,uint8_t machine
-                                                 ,uint8_t videotype){
+                                                ,struct tapdec_params *params
+                                                ,uint32_t freq
+                                                ,uint8_t machine
+                                                ,uint8_t videotype){
   PaStream *pastream;
 
   if (status.portaudio_init_status != LIBRARY_OK
@@ -1078,9 +1076,7 @@ enum audiotap_status tap2audio_open_to_soundcard(struct audiotap **audiotap
   }
 
   return tap2audio_open_common(audiotap
-                              ,volume
-                              ,inverted
-                              ,waveform
+                              ,params
                               ,freq
                               ,machine
                               ,videotype
@@ -1089,13 +1085,11 @@ enum audiotap_status tap2audio_open_to_soundcard(struct audiotap **audiotap
 }
 
 enum audiotap_status tap2audio_open_to_wavfile(struct audiotap **audiotap
-                                                 ,char *file
-                                                 ,uint32_t volume
-                                                 ,uint32_t freq
-                                                 ,enum tap_trigger inverted
-                                                 ,enum tapdec_waveform waveform
-                                                 ,uint8_t machine
-                                                 ,uint8_t videotype){
+                                              ,char *file
+                                              ,struct tapdec_params *params
+                                              ,uint32_t freq
+                                              ,uint8_t machine
+                                              ,uint8_t videotype){
   AFfilehandle fh;
   AFfilesetup setup;
 
@@ -1120,9 +1114,7 @@ enum audiotap_status tap2audio_open_to_wavfile(struct audiotap **audiotap
   }
 
   return tap2audio_open_common(audiotap
-                              ,volume
-                              ,inverted
-                              ,waveform
+                              ,params
                               ,freq
                               ,machine
                               ,videotype
@@ -1174,10 +1166,8 @@ enum audiotap_status tap2audio_open_to_tapfile(struct audiotap **audiotap
     return error;
   }
   return tap2audio_open_common(audiotap
-                              ,0 /*unused*/
-                              ,TAP_TRIGGER_ON_BOTH_EDGES /*unused*/
-                              ,TAPDEC_SQUARE /*unused*/
-                              ,0
+                              ,NULL
+                              ,0 /* unused */
                               ,machine
                               ,videotype
                               ,&tapfile_write_functions
