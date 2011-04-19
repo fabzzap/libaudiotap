@@ -27,6 +27,7 @@
 #endif
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <malloc.h>
 #include "audiofile.h"
 #include "pablio.h"
 #include "tapencoder.h"
@@ -50,9 +51,17 @@ struct tap2audio_functions {
 
 struct tap_handle {
   FILE *file;
-  unsigned char version;
-  uint32_t next_pulse;
-  uint8_t just_finished_with_overflow;
+  union{
+    struct{
+    unsigned char version;
+    uint32_t next_pulse;
+    uint8_t just_finished_with_overflow;
+    };
+    struct{
+    uint32_t overflow_value;
+    uint16_t bits_per_sample;
+    };
+  };
 };
 
 static const char c64_tap_header[] = "C64-TAPE-RAW";
@@ -772,6 +781,102 @@ static enum audiotap_status audiofile_read_init(struct audiotap **audiotap,
                                videotype,
                                &audiofile_read_functions,
                                fh);
+}
+
+static enum audiotap_status dmpfile_get_pulse(struct audiotap *audiotap, uint32_t *pulse, uint32_t *raw_pulse){
+  struct tap_handle *handle = (struct tap_handle *)audiotap->priv;
+
+  *pulse = 0;
+  while(1){
+    uint32_t this_pulse = 0;
+    int bitshift;
+    for (bitshift = 0; bitshift < handle->bits_per_sample; bitshift += 8){
+      uint8_t byte;
+      if (fread(&byte, 1, 1, handle->file) != 1)
+        return AUDIOTAP_EOF;
+      this_pulse += (byte<<bitshift);
+    }
+    *raw_pulse = this_pulse;
+    *pulse += this_pulse;
+    if (this_pulse < handle->overflow_value){
+      *pulse = (uint32_t)(*pulse / audiotap->factor);
+      return AUDIOTAP_OK;
+    }
+  }
+}
+
+static const struct audio2tap_functions dmpfile_read_functions = {
+  dmpfile_get_pulse,
+  NULL,
+  tapfile_get_total_len,
+  tapfile_get_current_pos,
+  tapfile_close
+};
+
+
+enum audiotap_status dmpfile_init(struct audiotap **audiotap,
+                                  char *file,
+                                  uint8_t *machine,
+                                  uint8_t *videotype){
+  uint32_t freq;
+  uint8_t version;
+  uint8_t bits_per_sample_on_file[2], freq_on_file[4];
+  const char dmp_file_header[] = "DC2N-TAP-RAW";
+  struct tap_handle *handle = malloc(sizeof(struct tap_handle));
+  enum audiotap_status err;
+
+  if (handle == NULL)
+    return AUDIOTAP_NO_MEMORY;
+
+  do {
+    char file_header[12];
+    handle->file = fopen(file, "rb");
+    if (handle->file == NULL){
+      err = errno == ENOENT ? AUDIOTAP_NO_FILE : AUDIOTAP_LIBRARY_ERROR;
+      break;
+    }
+    err = AUDIOTAP_LIBRARY_ERROR;
+    if (fread(file_header, sizeof(file_header), 1, handle->file) < 1)
+      break;
+    err = AUDIOTAP_WRONG_FILETYPE;
+    if (memcmp(dmp_file_header, file_header, sizeof(file_header)))
+      break;
+    if (fread(&version, 1, 1, handle->file) < 1)
+      break;
+    if (version > 0)
+      break;
+    if (fread(machine, 1, 1, handle->file) < 1)
+      break;
+    if (*machine > TAP_MACHINE_MAX)
+      break;
+    if (fread(videotype, 1, 1, handle->file) < 1)
+      break;
+    if (*videotype > TAP_VIDEOTYPE_MAX)
+      break;
+    if (fread(bits_per_sample_on_file, sizeof(bits_per_sample_on_file), 1, handle->file) < 1)
+      break;
+    handle->bits_per_sample = bits_per_sample_on_file[0] + (bits_per_sample_on_file[1]<<8);
+    handle->overflow_value = (1<<handle->bits_per_sample) - 1;
+    if (fread(freq_on_file, sizeof(freq_on_file), 1, handle->file) < 1)
+      break;
+    freq = freq_on_file[0]
+        + (freq_on_file[1]<< 8)
+        + (freq_on_file[2]<<16)
+        + (freq_on_file[3]<<24);
+    err = AUDIOTAP_OK;
+  } while (0);
+  if (err == AUDIOTAP_OK)
+    return audio2tap_open_common(audiotap,
+                                 freq,
+                                 NULL,
+                                 0, /*unused*/
+                                 0, /*unused*/
+                                 &dmpfile_read_functions,
+                                 handle);
+  if (handle->file != NULL)
+    fclose(handle->file);
+  free(handle);
+  return err;
 }
 
 enum audiotap_status audio2tap_open_from_file(struct audiotap **audiotap,
