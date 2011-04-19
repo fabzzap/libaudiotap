@@ -59,7 +59,7 @@ struct tap_handle {
     };
     struct{
     uint32_t overflow_value;
-    uint16_t bits_per_sample;
+    uint8_t bits_per_sample;
     };
   };
 };
@@ -799,7 +799,7 @@ static enum audiotap_status dmpfile_get_pulse(struct audiotap *audiotap, uint32_
     *raw_pulse = this_pulse;
     *pulse += this_pulse;
     if (this_pulse < handle->overflow_value){
-      *pulse = (uint32_t)(*pulse / audiotap->factor);
+      *pulse = (uint32_t)(*pulse * audiotap->factor);
       return AUDIOTAP_OK;
     }
   }
@@ -820,7 +820,7 @@ enum audiotap_status dmpfile_init(struct audiotap **audiotap,
                                   uint8_t *videotype){
   uint32_t freq;
   uint8_t version;
-  uint8_t bits_per_sample_on_file[2], freq_on_file[4];
+  uint8_t freq_on_file[4];
   const char dmp_file_header[] = "DC2N-TAP-RAW";
   struct tap_handle *handle = malloc(sizeof(struct tap_handle));
   enum audiotap_status err;
@@ -853,9 +853,8 @@ enum audiotap_status dmpfile_init(struct audiotap **audiotap,
       break;
     if (*videotype > TAP_VIDEOTYPE_MAX)
       break;
-    if (fread(bits_per_sample_on_file, sizeof(bits_per_sample_on_file), 1, handle->file) < 1)
+    if (fread(&handle->bits_per_sample, 1, 1, handle->file) < 1)
       break;
-    handle->bits_per_sample = bits_per_sample_on_file[0] + (bits_per_sample_on_file[1]<<8);
     handle->overflow_value = (1<<handle->bits_per_sample) - 1;
     if (fread(freq_on_file, sizeof(freq_on_file), 1, handle->file) < 1)
       break;
