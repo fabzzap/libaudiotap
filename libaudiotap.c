@@ -27,7 +27,6 @@
 #endif
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <malloc.h>
 #include "audiofile.h"
 #include "pablio.h"
 #include "tapencoder.h"
@@ -114,6 +113,8 @@ static const char* audiofile_library_name =
 #else //not AUDIOFILE_COMPILED_WITH_CYGWIN_SHELL
 "libaudiofile-0.dll"
 #endif //_WIN32 or __CYGWIN__,AUDIOFILE_COMPILED_WITH_CYGWIN_SHELL
+#elif defined __APPLE__
+"libaudiofile.0.0.2.dylib"
 #else //not _MSC_VER, not _WIN32, not __CYGWIN__
 "libaudiofile.so.0"
 #endif//_MSC_VER,_WIN32 or __CYGWIN__
@@ -296,6 +297,8 @@ static enum library_status portaudio_init(){
 #else //not PORTAUDIO_COMPILED_WITH_CYGWIN_SHELL
     "libportaudio-2.dll"
 #endif //_WIN32 or __CYGWIN__,AUDIOFILE_COMPILED_WITH_CYGWIN_SHELL
+#elif defined __APPLE__
+    "libportaudio.2.dylib"
 #else //not _MSC_VER, not _WIN32, not __CYGWIN__
     "libportaudio.so.2"
 #endif//_MSC_VER,_WIN32 or __CYGWIN__
