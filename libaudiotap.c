@@ -585,7 +585,7 @@ static enum audiotap_status tapfile_get_pulse(struct audiotap *audiotap, uint32_
       return AUDIOTAP_EOF;
     if (byte != 0){
       *raw_pulse = byte;
-      *pulse = byte * 8;
+      *pulse += byte * 8;
       return AUDIOTAP_OK;
     }
     if (handle->version == 0)
