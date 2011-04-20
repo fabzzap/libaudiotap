@@ -1007,9 +1007,10 @@ static uint32_t tapfile_get_buffer(struct audiotap *audiotap){
   uint32_t overflow_value = handle->version == 0 ? max_in_one_byte : 0xFFFFFF;
   uint8_t *buffer = audiotap->bufstart;
   uint32_t bufroom = sizeof(audiotap->bufstart);
-  uint8_t done = 0;
+  uint8_t done = 1;
 
-  while(handle->next_pulse >= overflow_value){
+  while(handle->next_pulse >= overflow_value && done){
+    done = 0;
     if(handle->version == 0){
       if(bufroom){
         *buffer++ = 0;
