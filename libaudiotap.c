@@ -54,7 +54,7 @@ struct tap_handle {
     struct{
     unsigned char version;
     uint32_t next_pulse;
-    uint8_t just_finished_with_overflow;
+    uint8_t exhausted;
     };
     struct{
     uint32_t overflow_value;
@@ -999,6 +999,7 @@ void audio2tap_close(struct audiotap *audiotap){
 static void tapfile_set_pulse(struct audiotap *audiotap, uint32_t pulse){
   struct tap_handle *handle = (struct tap_handle *)audiotap->priv;
   handle->next_pulse = pulse;
+  handle->exhausted = 0;
 }
 
 static uint32_t tapfile_get_buffer(struct audiotap *audiotap){
@@ -1007,18 +1008,22 @@ static uint32_t tapfile_get_buffer(struct audiotap *audiotap){
   uint32_t overflow_value = handle->version == 0 ? max_in_one_byte : 0xFFFFFF;
   uint8_t *buffer = audiotap->bufstart;
   uint32_t bufroom = sizeof(audiotap->bufstart);
-  uint8_t done = 1;
+  uint8_t not_enough_bufroom = 0;
 
-  while(handle->next_pulse >= overflow_value && done){
-    done = 0;
+  while(handle->next_pulse >= overflow_value){
     if(handle->version == 0){
-      if(bufroom){
-        *buffer++ = 0;
-        bufroom--;
-        done = 1;
+      if(bufroom == 0){
+        not_enough_bufroom = 1;
+        break;
       }
+      *buffer++ = 0;
+      bufroom--;
     }
-    else if(bufroom>=4){
+    else{
+      if(bufroom < 4){
+        not_enough_bufroom = 1;
+        break;
+      }
       *buffer++ = 0;
       bufroom--;
       *buffer++ = 0xFF;
@@ -1027,46 +1032,34 @@ static uint32_t tapfile_get_buffer(struct audiotap *audiotap){
       bufroom--;
       *buffer++ = 0xFF;
       bufroom--;
-      done = 1;
-      handle->just_finished_with_overflow = 1;
     }
-    if(done)
-      handle->next_pulse -= overflow_value;
+    handle->next_pulse -= overflow_value;
+    if (handle->next_pulse == 0 && handle->version > 0)
+      handle->exhausted = 1;
   }
 
-  done = 0;
-  if(
-     (
-       handle->next_pulse >= max_in_one_byte || 
-        (
-         handle->next_pulse == 0
-      && handle->version > 0
-      && handle->just_finished_with_overflow
-        )
-     )
-     && bufroom >=4
-    ){
-    *buffer++ = 0;
-    bufroom--;
-    *buffer++ = (handle->next_pulse      )&0xFF;
-    bufroom--;
-    *buffer++ = (handle->next_pulse >>  8)&0xFF;
-    bufroom--;
-    *buffer++ = (handle->next_pulse >> 16)&0xFF;
-    bufroom--;
-    done = 1;
-  }
-  else if (handle->next_pulse > 0 && bufroom > 0){
-    handle->next_pulse += 7;
-    if (handle->next_pulse > 0x7F8)
-      handle->next_pulse = 0x7F8;
-    *buffer++ = (handle->next_pulse + 7) / 8;
-    bufroom--;
-    done = 1;
-  }
-  if(done){
-    handle->just_finished_with_overflow = 0;
-    handle->next_pulse = 0;
+  if(!not_enough_bufroom){
+    if(handle->next_pulse >= max_in_one_byte || handle->exhausted){
+      if (bufroom >= 4){
+        *buffer++ = 0;
+        bufroom--;
+        *buffer++ = (handle->next_pulse      )&0xFF;
+        bufroom--;
+        *buffer++ = (handle->next_pulse >>  8)&0xFF;
+        bufroom--;
+        *buffer++ = (handle->next_pulse >> 16)&0xFF;
+        bufroom--;
+        handle->next_pulse = 0;
+        handle->exhausted = 0;
+      }
+    }
+    else if (handle->next_pulse > 0 && bufroom > 0){
+      if (handle->next_pulse > 0x7F8)
+        handle->next_pulse = 0x7F8;
+      *buffer++ = (handle->next_pulse + 7) / 8;
+      bufroom--;
+      handle->next_pulse = 0;
+    }
   }
   return sizeof(audiotap->bufstart) - bufroom;
 }
@@ -1256,8 +1249,6 @@ enum audiotap_status tap2audio_open_to_tapfile(struct audiotap **audiotap
   }
 
   handle->version = version;
-  handle->next_pulse = 0;
-  handle->just_finished_with_overflow = 0;
 
   do{
     if (fwrite(tap_header, strlen(tap_header), 1, handle->file) != 1)
