@@ -897,8 +897,11 @@ enum audiotap_status audio2tap_open_from_file(struct audiotap **audiotap,
   if (error != AUDIOTAP_WRONG_FILETYPE)
     return error;
   error = dmpfile_init(audiotap, file, machine, videotype);
-  if (error == AUDIOTAP_OK)
+  if (error == AUDIOTAP_OK){
+    if (semiwaves)
+      *semiwaves = 0;
     return AUDIOTAP_OK;
+  }
   if (error != AUDIOTAP_WRONG_FILETYPE)
     return error;
   if (params == NULL)
