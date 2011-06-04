@@ -87,7 +87,7 @@ static struct audiotap_init_status status = {
   LIBRARY_UNINIT
 };
 
-static const float tap_clocks[][2]={
+static const float tap_clocks[TAP_MACHINE_MAX+1][TAP_VIDEOTYPE_MAX+1]={
   {985248,1022727}, /* C64 */
   {1108405,1022727}, /* VIC */
   {886724,894886}  /* C16 */
@@ -1142,28 +1142,30 @@ static enum audiotap_status tap2audio_open_common(struct audiotap **audiotap
                                                  ,uint8_t videotype
                                                  ,const struct tap2audio_functions *functions
                                                  ,void *priv){
-  struct audiotap *obj;
-  enum audiotap_status error = AUDIOTAP_NO_MEMORY;
+  struct audiotap *obj = NULL;
+  enum audiotap_status error = AUDIOTAP_WRONG_ARGUMENTS;
 
-  obj=calloc(1, sizeof(struct audiotap));
-  if (obj != NULL){
-    obj->factor = tap_clocks[machine][videotype] / freq;
-    obj->priv = priv;
-    obj->tap2audio_functions = functions;
-    if (params == NULL ||
-         ( (obj->tapdec = tapdec_init(params->volume, params->inverted, params->waveform)) != NULL)
-       )
-      error = AUDIOTAP_OK;
+  if (machine <= TAP_MACHINE_MAX && videotype <= TAP_VIDEOTYPE_MAX){
+    error = AUDIOTAP_NO_MEMORY;
+    obj=calloc(1, sizeof(struct audiotap));
+    if (obj != NULL){
+      obj->factor = tap_clocks[machine][videotype] / freq;
+      obj->priv = priv;
+      obj->tap2audio_functions = functions;
+      if (params == NULL ||
+          ( (obj->tapdec = tapdec_init(params->volume, params->inverted, params->waveform)) != NULL)
+         )
+        error = AUDIOTAP_OK;
+    }
   }
 
-  if (error == AUDIOTAP_OK)
-    *audiotap = obj;
-  else {
+  if (error != AUDIOTAP_OK) {
     functions->close(priv);
     free(obj);
-    *audiotap = NULL;
+    obj = NULL;
   }
 
+  *audiotap = obj;
   return error;
 }
 
@@ -1240,7 +1242,7 @@ enum audiotap_status tap2audio_open_to_tapfile(struct audiotap **audiotap
   const char *tap_header = (machine == TAP_MACHINE_C16 ? c16_tap_header : c64_tap_header);
   enum audiotap_status error = AUDIOTAP_LIBRARY_ERROR;
 
-  if (version > TAP_MACHINE_MAX || videotype > TAP_VIDEOTYPE_MAX)
+  if (version > 2)
     return AUDIOTAP_WRONG_ARGUMENTS;
   if((handle = malloc(sizeof(struct tap_handle))) == NULL)
     return AUDIOTAP_NO_MEMORY;
