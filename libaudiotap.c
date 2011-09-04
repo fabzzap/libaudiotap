@@ -393,7 +393,7 @@ static enum library_status portaudio_init(){
   return LIBRARY_OK;
 }
 
-static enum library_status tapencoder_init(){
+static enum library_status libtapencoder_init(){
 #if defined(WIN32)
   HMODULE
 #else
@@ -418,13 +418,13 @@ static enum library_status tapencoder_init(){
   if (!handle)
     return LIBRARY_MISSING;
 
-  tapenc_init = 
+  tapencoder_init = 
 #if defined(WIN32)
-  (void*)GetProcAddress(handle, "tapenc_init");
+  (void*)GetProcAddress(handle, "tapencoder_init");
 #else
-  dlsym(handle, "tapenc_init");
+  dlsym(handle, "tapencoder_init");
 #endif
-  if (!tapenc_init)
+  if (!tapencoder_init)
     return LIBRARY_SYMBOLS_MISSING;
 
   tapenc_get_pulse =
@@ -457,7 +457,7 @@ static enum library_status tapencoder_init(){
   return LIBRARY_OK;
 }
 
-static enum library_status tapdecoder_init(){
+static enum library_status libtapdecoder_init(){
 #if defined(WIN32)
   HMODULE
 #else
@@ -483,13 +483,13 @@ static enum library_status tapdecoder_init(){
   if (!handle)
     return LIBRARY_MISSING;
 
-  tapdec_init = 
+  tapdecoder_init = 
 #if defined(WIN32)
-  (void*)GetProcAddress(handle, "tapdec_init");
+  (void*)GetProcAddress(handle, "tapdecoder_init");
 #else
-  dlsym(handle, "tapdec_init");
+  dlsym(handle, "tapdecoder_init");
 #endif
-  if (!tapdec_init)
+  if (!tapdecoder_init)
     return LIBRARY_SYMBOLS_MISSING;
 
   tapdec_set_pulse =
@@ -514,11 +514,11 @@ static enum library_status tapdecoder_init(){
   return LIBRARY_OK;
 }
 
-struct audiotap_init_status audiotap_initialize(void){
+struct audiotap_init_status audiotap_initialize2(void){
   status.audiofile_init_status = audiofile_init();
   status.portaudio_init_status = portaudio_init();
-  status.tapencoder_init_status = tapencoder_init();
-  status.tapdecoder_init_status = tapdecoder_init();
+  status.tapencoder_init_status = libtapencoder_init();
+  status.tapdecoder_init_status = libtapdecoder_init();
 
   return status;
 }
@@ -552,10 +552,11 @@ static enum audiotap_status audio2tap_open_common(struct audiotap **audiotap,
 
     if (tapenc_params != NULL){
       if (
-          (obj->tapenc=tapenc_init(tapenc_params->min_duration,
+          (obj->tapenc=tapencoder_init(tapenc_params->min_duration,
                                    tapenc_params->sensitivity,
                                    tapenc_params->initial_threshold,
-                                   tapenc_params->inverted
+                                   tapenc_params->inverted,
+                                   tapenc_params->semiwaves
                                    )
           )==NULL
          )
@@ -881,7 +882,7 @@ enum audiotap_status dmpfile_init(struct audiotap **audiotap,
   return err;
 }
 
-enum audiotap_status audio2tap_open_from_file(struct audiotap **audiotap,
+enum audiotap_status audio2tap_open_from_file2(struct audiotap **audiotap,
                                               char *file,
                                               struct tapenc_params *params,
                                               uint8_t *machine,
@@ -941,7 +942,7 @@ static const struct audio2tap_functions portaudio_read_functions = {
   portaudio_close
 };
 
-enum audiotap_status audio2tap_from_soundcard(struct audiotap **audiotap,
+enum audiotap_status audio2tap_from_soundcard2(struct audiotap **audiotap,
                                               uint32_t freq,
                                               struct tapenc_params *params,
                                               uint8_t machine,
@@ -1153,7 +1154,7 @@ static enum audiotap_status tap2audio_open_common(struct audiotap **audiotap
       obj->priv = priv;
       obj->tap2audio_functions = functions;
       if (params == NULL ||
-          ( (obj->tapdec = tapdec_init(params->volume, params->inverted, params->waveform)) != NULL)
+          ( (obj->tapdec = tapdecoder_init(params->volume, params->inverted, params->semiwaves, params->waveform)) != NULL)
          )
         error = AUDIOTAP_OK;
     }

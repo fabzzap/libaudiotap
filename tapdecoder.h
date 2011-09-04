@@ -18,7 +18,7 @@
 
 struct tap_dec_t;
 
-struct tap_dec_t *(*tapdec_init)(uint32_t volume, enum tap_trigger trigger_type, enum tapdec_waveform waveform);
+struct tap_dec_t *(*tapdecoder_init)(uint32_t volume, uint8_t inverted, uint8_t semiwaves, enum tapdec_waveform waveform);
 void (*tapdec_set_pulse)(struct tap_dec_t *tap, uint32_t pulse);
 uint32_t (*tapdec_get_buffer)(struct tap_dec_t *tap, int32_t *buffer, unsigned int buflen);
 
