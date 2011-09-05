@@ -818,7 +818,7 @@ static const struct audio2tap_functions dmpfile_read_functions = {
 };
 
 
-enum audiotap_status dmpfile_init(struct audiotap **audiotap,
+static enum audiotap_status dmpfile_init(struct audiotap **audiotap,
                                   char *file,
                                   uint8_t *machine,
                                   uint8_t *videotype){
@@ -1170,7 +1170,7 @@ static enum audiotap_status tap2audio_open_common(struct audiotap **audiotap
   return error;
 }
 
-enum audiotap_status tap2audio_open_to_soundcard(struct audiotap **audiotap
+enum audiotap_status tap2audio_open_to_soundcard2(struct audiotap **audiotap
                                                 ,struct tapdec_params *params
                                                 ,uint32_t freq
                                                 ,uint8_t machine
@@ -1196,7 +1196,7 @@ enum audiotap_status tap2audio_open_to_soundcard(struct audiotap **audiotap
                               ,pastream);
 }
 
-enum audiotap_status tap2audio_open_to_wavfile(struct audiotap **audiotap
+enum audiotap_status tap2audio_open_to_wavfile2(struct audiotap **audiotap
                                               ,char *file
                                               ,struct tapdec_params *params
                                               ,uint32_t freq
@@ -1303,4 +1303,3 @@ void tap2audio_close(struct audiotap *audiotap){
   free(audiotap->tapdec);
   free(audiotap);
 }
-
