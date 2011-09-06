@@ -20,7 +20,7 @@
 struct tap_enc_t;
 
 struct tap_enc_t *(*tapencoder_init)(uint32_t min_duration, uint8_t sensitivity, uint8_t initial_threshold, uint8_t inverted, uint8_t semiwaves);
-uint32_t (*tapenc_get_pulse)(struct tap_enc_t *tap, int32_t *buffer, uint32_t buflen, uint8_t *got_pulse, uint32_t *pulse);
+uint32_t (*tapenc_get_pulse)(struct tap_enc_t *tap, int32_t *buffer, uint32_t buflen, uint32_t *pulse);
 uint32_t (*tapenc_flush)(struct tap_enc_t *tap);
 int32_t (*tapenc_get_max)(struct tap_enc_t *tap);
 

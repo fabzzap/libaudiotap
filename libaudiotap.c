@@ -695,15 +695,14 @@ static enum audiotap_status tapfile_init(struct audiotap **audiotap,
 
 static enum audiotap_status audio_get_pulse(struct audiotap *audiotap, uint32_t *pulse, uint32_t *raw_pulse){
   while(!audiotap->terminated && !audiotap->has_flushed){
-    uint8_t got_pulse;
     uint32_t done_now;
     enum audiotap_status error;
     uint32_t numframes;
 
-    done_now=tapenc_get_pulse(audiotap->tapenc, (int32_t*)audiotap->buffer, audiotap->bufroom, &got_pulse, raw_pulse);
+    done_now=tapenc_get_pulse(audiotap->tapenc, (int32_t*)audiotap->buffer, audiotap->bufroom, raw_pulse);
     audiotap->buffer += done_now * sizeof(int32_t);
     audiotap->bufroom -= done_now;
-    if(got_pulse){
+    if(*raw_pulse > 0){
       *pulse = convert_samples(audiotap, *raw_pulse);
       return AUDIOTAP_OK;
     }
