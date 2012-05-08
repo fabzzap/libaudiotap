@@ -87,11 +87,13 @@ enum audiotap_status audio2tap_from_soundcard2(struct audiotap **audiotap,
                                               uint8_t machine,
                                               uint8_t videotype);
 
-enum audiotap_status audio2tap_get_pulse2(struct audiotap *audiotap, uint32_t *pulse, uint32_t *raw_pulse);
+enum audiotap_status audio2tap_get_pulses(struct audiotap *audiotap, uint32_t *pulse, uint32_t *raw_pulse);
 
 int audio2tap_get_total_len(struct audiotap *audiotap);
 
 int audio2tap_get_current_pos(struct audiotap *audiotap);
+
+int audio2tap_is_eof(struct audiotap *audiotap);
 
 int32_t audio2tap_get_current_sound_level(struct audiotap *audiotap);
 

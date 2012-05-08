@@ -38,7 +38,8 @@ struct audio2tap_functions {
   enum audiotap_status(*set_buffer)(void *priv, int32_t *buffer, uint32_t bufsize, uint32_t *numframes);
   int (*get_total_len)(struct audiotap *audiotap);
   int (*get_current_pos)(struct audiotap *audiotap);
-  void                (*close)(void *priv);
+  int (*is_eof)(struct audiotap *audiotap);
+  void (*close)(void *priv);
 };
 
 struct tap2audio_functions {
@@ -627,11 +628,18 @@ static void tapfile_close(void *priv){
   free(handle);
 }
 
+static int tapfile_is_eof(struct audiotap *audiotap){
+  struct tap_handle *handle = (struct tap_handle *)audiotap->priv;
+
+  return feof(handle->file);
+}
+
 static const struct audio2tap_functions tapfile_read_functions = {
   tapfile_get_pulse,
   NULL,
   tapfile_get_total_len,
   tapfile_get_current_pos,
+  tapfile_is_eof,
   tapfile_close
 };
 
@@ -739,11 +747,16 @@ static int audiofile_get_current_pos(struct audiotap *audiotap){
    return audiotap->accumulated_samples;
 }
 
+static int audiofile_is_eof(struct audiotap *audiotap){
+  return audiotap->has_flushed;
+}
+
 const struct audio2tap_functions audiofile_read_functions = {
   audio_get_pulse,
   audiofile_set_buffer,
   audiofile_get_total_len,
   audiofile_get_current_pos,
+  audiofile_is_eof,
   audiofile_close
 };
 
@@ -813,6 +826,7 @@ static const struct audio2tap_functions dmpfile_read_functions = {
   NULL,
   tapfile_get_total_len,
   tapfile_get_current_pos,
+  tapfile_is_eof,
   tapfile_close
 };
 
@@ -933,11 +947,16 @@ static int portaudio_get_current_pos(struct audiotap *audiotap){
   return -1;
 }
 
+static int portaudio_is_eof(struct audiotap *audiotap){
+  return 0;
+}
+
 static const struct audio2tap_functions portaudio_read_functions = {
   audio_get_pulse,
   portaudio_set_buffer,
   portaudio_get_total_len,
   portaudio_get_current_pos,
+  portaudio_is_eof,
   portaudio_close
 };
 
@@ -977,6 +996,10 @@ int audio2tap_get_total_len(struct audiotap *audiotap){
 
 int audio2tap_get_current_pos(struct audiotap *audiotap){
   return audiotap->audio2tap_functions->get_current_pos(audiotap);
+}
+
+int audio2tap_is_eof(struct audiotap *audiotap){
+  return audiotap->audio2tap_functions->is_eof(audiotap);
 }
 
 int32_t audio2tap_get_current_sound_level(struct audiotap *audiotap){
