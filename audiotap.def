@@ -2,8 +2,8 @@ LIBRARY      AUDIOTAP.DLL
 
 EXPORTS
 audiotap_initialize2
-audio2tap_open_from_file2
-audio2tap_from_soundcard2
+audio2tap_open_from_file3
+audio2tap_from_soundcard3
 audio2tap_get_pulses
 audio2tap_get_total_len
 audio2tap_get_current_pos

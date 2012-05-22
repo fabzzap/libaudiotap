@@ -71,21 +71,21 @@ struct tapenc_params {
   uint8_t sensitivity;
   uint8_t initial_threshold;
   uint8_t inverted;
-  uint8_t semiwaves;
 };
 
-enum audiotap_status audio2tap_open_from_file2(struct audiotap **audiotap,
+enum audiotap_status audio2tap_open_from_file3(struct audiotap **audiotap,
                                               char *file,
                                               struct tapenc_params *params,
                                               uint8_t *machine,
                                               uint8_t *videotype,
-                                              uint8_t *semiwaves);
+                                              uint8_t *halfwaves);
 
-enum audiotap_status audio2tap_from_soundcard2(struct audiotap **audiotap,
+enum audiotap_status audio2tap_from_soundcard3(struct audiotap **audiotap,
                                               uint32_t freq,
                                               struct tapenc_params *params,
                                               uint8_t machine,
-                                              uint8_t videotype);
+                                              uint8_t videotype,
+                                              uint8_t halfwaves);
 
 enum audiotap_status audio2tap_get_pulses(struct audiotap *audiotap, uint32_t *pulse, uint32_t *raw_pulse);
 
@@ -97,6 +97,8 @@ int audio2tap_is_eof(struct audiotap *audiotap);
 
 int32_t audio2tap_get_current_sound_level(struct audiotap *audiotap);
 
+void audio2tap_invert(struct audiotap *audiotap);
+
 void audiotap_terminate(struct audiotap *audiotap);
 
 void audio2tap_close(struct audiotap *audiotap);
@@ -106,7 +108,7 @@ void audio2tap_close(struct audiotap *audiotap);
 struct tapdec_params {
   uint8_t volume;
   uint8_t inverted;
-  uint8_t semiwaves;
+  uint8_t halfwaves;
   enum tapdec_waveform waveform;
 };
 

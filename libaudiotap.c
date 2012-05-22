@@ -39,6 +39,7 @@ struct audio2tap_functions {
   int (*get_total_len)(struct audiotap *audiotap);
   int (*get_current_pos)(struct audiotap *audiotap);
   int (*is_eof)(struct audiotap *audiotap);
+  void (*invert)(struct audiotap *audiotap);
   void (*close)(void *priv);
 };
 
@@ -53,13 +54,16 @@ struct tap_handle {
   FILE *file;
   union{
     struct{
-    unsigned char version;
-    uint32_t next_pulse;
-    uint8_t exhausted;
+      unsigned char version;
+      uint32_t next_pulse;
+      uint8_t exhausted;
     };
     struct{
-    uint32_t overflow_value;
-    uint8_t bits_per_sample;
+      uint32_t overflow_value;
+      uint8_t bits_per_sample;
+      uint8_t get_full_waves_in_v2;
+      uint8_t temp_get_half_waves_in_v2;
+      uint8_t last_was_0;
     };
   };
 };
@@ -455,6 +459,15 @@ static enum library_status libtapencoder_init(){
    if (!tapenc_get_max)
      return LIBRARY_SYMBOLS_MISSING;
 
+  tapenc_invert =
+#if defined(WIN32)
+   (void*)GetProcAddress(handle, "tapenc_invert");
+#else
+   dlsym(handle, "tapenc_invert");
+#endif
+   if (!tapenc_invert)
+     return LIBRARY_SYMBOLS_MISSING;
+
   return LIBRARY_OK;
 }
 
@@ -530,50 +543,59 @@ static uint32_t convert_samples(struct audiotap *audiotap, uint32_t raw_samples)
 }
 
 static enum audiotap_status audio2tap_open_common(struct audiotap **audiotap,
-                                           uint32_t freq,
-                                           struct tapenc_params *tapenc_params,
-                                           uint8_t machine,
-                                           uint8_t videotype,
-                                           const struct audio2tap_functions *audio2tap_functions,
-                                           void *priv){
-  struct audiotap *obj = NULL;
+                                                  struct tap_enc_t *tapenc,
+                                                  float factor,
+                                                  const struct audio2tap_functions *audio2tap_functions,
+                                                  void *priv){
+  struct audiotap *obj = calloc(1, sizeof(struct audiotap));
+  if (obj == NULL){
+    audio2tap_close(obj);
+    return AUDIOTAP_NO_MEMORY;
+  }
+  obj->priv = priv;
+  obj->audio2tap_functions = audio2tap_functions;
+  obj->bufroom = 0;
+  obj->factor = factor;
+  obj->tapenc = tapenc;
+  *audiotap = obj;
+  return AUDIOTAP_OK;
+}
+
+static enum audiotap_status audio2tap_audio_open_common(struct audiotap **audiotap,
+                                                        uint32_t freq,
+                                                        struct tapenc_params *tapenc_params,
+                                                        uint8_t machine,
+                                                        uint8_t videotype,
+                                                        uint8_t halfwaves,
+                                                        const struct audio2tap_functions *audio2tap_functions,
+                                                        void *priv){
   enum audiotap_status error = AUDIOTAP_WRONG_ARGUMENTS;
+  struct tap_enc_t *tapenc;
 
   do{
-    if (machine > TAP_MACHINE_MAX || videotype > TAP_VIDEOTYPE_MAX)
+    if (machine > TAP_MACHINE_MAX || videotype > TAP_VIDEOTYPE_MAX || tapenc_params == NULL)
       break;
 
     error = AUDIOTAP_NO_MEMORY;
-    obj=calloc(1, sizeof(struct audiotap));
-    if (obj == NULL)
+
+    if (
+        (tapenc=tapencoder_init(tapenc_params->min_duration,
+                                tapenc_params->sensitivity,
+                                tapenc_params->initial_threshold,
+                                tapenc_params->inverted,
+                                halfwaves
+                               )
+        )==NULL
+       )
       break;
-
-    obj->priv = priv;
-    obj->audio2tap_functions = audio2tap_functions;
-
-    if (tapenc_params != NULL){
-      if (
-          (obj->tapenc=tapencoder_init(tapenc_params->min_duration,
-                                   tapenc_params->sensitivity,
-                                   tapenc_params->initial_threshold,
-                                   tapenc_params->inverted,
-                                   tapenc_params->semiwaves
-                                   )
-          )==NULL
-         )
-        break;
-      obj->bufroom = 0;
-    }
-    obj->factor = tap_clocks[machine][videotype] / freq;
     error = AUDIOTAP_OK;
   }while(0);
 
-  if (error == AUDIOTAP_OK)
-    *audiotap = obj;
-  else
-    audio2tap_close(obj);
-
-  return error;
+  if (error != AUDIOTAP_OK){
+    audio2tap_functions->close(priv);
+    return error;
+  }
+  return audio2tap_open_common(audiotap, tapenc, tap_clocks[machine][videotype] / freq, audio2tap_functions, priv);
 }
 
 static enum audiotap_status tapfile_get_pulse(struct audiotap *audiotap, uint32_t *pulse, uint32_t *raw_pulse){
@@ -588,19 +610,43 @@ static enum audiotap_status tapfile_get_pulse(struct audiotap *audiotap, uint32_
     if (byte != 0){
       *raw_pulse = byte;
       *pulse += byte * 8;
+      handle->last_was_0 = 0;
       return AUDIOTAP_OK;
     }
-    if (handle->version == 0)
-      *pulse += 256 * 8;
-    else{
-      if (fread(threebytes, 3, 1, handle->file) != 1)
-        return AUDIOTAP_EOF;
-      *raw_pulse = *pulse = threebytes[0]        +
-                           (threebytes[1] <<  8) +
-                           (threebytes[2] << 16);
+    if (handle->version == 0){
+      if (handle->last_was_0)
+        continue;
+      *raw_pulse = 0;
+      *pulse = 1000000;
+      handle->last_was_0 = 1;
       return AUDIOTAP_OK;
     }
+    if (fread(threebytes, 3, 1, handle->file) != 1)
+      return AUDIOTAP_EOF;
+    *raw_pulse = threebytes[0]        +
+                (threebytes[1] <<  8) +
+                (threebytes[2] << 16);
+    *pulse += *raw_pulse;
+    if (*raw_pulse < 0xFFFFFF)
+      return AUDIOTAP_OK;
   }
+}
+
+static enum audiotap_status tapfile_get_wave(struct audiotap *audiotap, uint32_t *pulse, uint32_t *raw_pulse){
+  struct tap_handle *handle = (struct tap_handle *)audiotap->priv;
+  enum audiotap_status ret = tapfile_get_pulse(audiotap, pulse, raw_pulse);
+
+  if (ret != AUDIOTAP_OK)
+    return ret;
+
+  if (handle->temp_get_half_waves_in_v2)
+    handle->temp_get_half_waves_in_v2 = 0;
+  else if (handle->get_full_waves_in_v2){
+    uint32_t second_half_wave;
+    ret = tapfile_get_pulse(audiotap, &second_half_wave, raw_pulse);
+    *pulse += second_half_wave;
+  }
+  return ret;
 }
 
 static int tapfile_get_total_len(struct audiotap *audiotap){
@@ -634,12 +680,19 @@ static int tapfile_is_eof(struct audiotap *audiotap){
   return feof(handle->file);
 }
 
+void tapfile_invert(struct audiotap *audiotap)
+{
+  struct tap_handle *handle = (struct tap_handle *)audiotap->priv;
+  handle->temp_get_half_waves_in_v2 = 1;
+}
+
 static const struct audio2tap_functions tapfile_read_functions = {
-  tapfile_get_pulse,
+  tapfile_get_wave,
   NULL,
   tapfile_get_total_len,
   tapfile_get_current_pos,
   tapfile_is_eof,
+  tapfile_invert,
   tapfile_close
 };
 
@@ -647,9 +700,12 @@ static enum audiotap_status tapfile_init(struct audiotap **audiotap,
                                          char *file,
                                          uint8_t *machine,
                                          uint8_t *videotype,
-                                         uint8_t *semiwaves){
+                                         uint8_t *halfwaves){
   struct tap_handle *handle;
   enum audiotap_status err;
+
+  if (halfwaves == NULL)
+    return AUDIOTAP_WRONG_ARGUMENTS;
 
   handle = malloc(sizeof(struct tap_handle));
   if (handle == NULL)
@@ -685,12 +741,12 @@ static enum audiotap_status tapfile_init(struct audiotap **audiotap,
     err = AUDIOTAP_OK;
   } while (0);
   if (err == AUDIOTAP_OK){
-    if (semiwaves != NULL)
-      *semiwaves = handle->version == 2;
+    handle->get_full_waves_in_v2 = handle->version == 2 && *halfwaves == 0;
+    handle->temp_get_half_waves_in_v2 = 0;
+    handle->last_was_0 = 0;
+    *halfwaves = handle->version == 2;
     return audio2tap_open_common(audiotap,
-                                 0,
                                  NULL,
-                                 0, /*unused*/
                                  0, /*unused*/
                                  &tapfile_read_functions,
                                  handle);
@@ -730,6 +786,10 @@ static enum audiotap_status audio_get_pulse(struct audiotap *audiotap, uint32_t 
   return audiotap->terminated ? AUDIOTAP_INTERRUPTED : AUDIOTAP_EOF;
 }
 
+static void audio_invert(struct audiotap *audiotap){
+  tapenc_invert(audiotap->tapenc);
+}
+
 static enum audiotap_status audiofile_set_buffer(void *priv, int32_t *buffer, uint32_t bufsize, uint32_t *numframes) {
   *numframes=afReadFrames((AFfilehandle)priv, AF_DEFAULT_TRACK, buffer, bufsize);
   return *numframes == -1 ? AUDIOTAP_LIBRARY_ERROR : AUDIOTAP_OK;
@@ -757,6 +817,7 @@ const struct audio2tap_functions audiofile_read_functions = {
   audiofile_get_total_len,
   audiofile_get_current_pos,
   audiofile_is_eof,
+  audio_invert,
   audiofile_close
 };
 
@@ -764,7 +825,8 @@ static enum audiotap_status audiofile_read_init(struct audiotap **audiotap,
                                                  char *file,
                                                  struct tapenc_params *params,
                                                  uint8_t machine,
-                                                 uint8_t videotype){
+                                                 uint8_t videotype,
+                                                 uint8_t halfwaves){
   uint32_t freq;
   enum audiotap_status error = AUDIOTAP_LIBRARY_ERROR;
   AFfilehandle fh;
@@ -790,13 +852,14 @@ static enum audiotap_status audiofile_read_init(struct audiotap **audiotap,
     afCloseFile(fh);
     return error;
   }
-  return audio2tap_open_common(audiotap,
-                               freq,
-                               params,
-                               machine,
-                               videotype,
-                               &audiofile_read_functions,
-                               fh);
+  return audio2tap_audio_open_common(audiotap,
+                                     freq,
+                                     params,
+                                     machine,
+                                     videotype,
+                                     halfwaves,
+                                     &audiofile_read_functions,
+                                     fh);
 }
 
 static enum audiotap_status dmpfile_get_pulse(struct audiotap *audiotap, uint32_t *pulse, uint32_t *raw_pulse){
@@ -827,6 +890,7 @@ static const struct audio2tap_functions dmpfile_read_functions = {
   tapfile_get_total_len,
   tapfile_get_current_pos,
   tapfile_is_eof,
+  tapfile_invert,
   tapfile_close
 };
 
@@ -883,9 +947,7 @@ static enum audiotap_status dmpfile_init(struct audiotap **audiotap,
   } while (0);
   if (err == AUDIOTAP_OK)
     return audio2tap_open_common(audiotap,
-                                 freq,
                                  NULL,
-                                 0, /*unused*/
                                  0, /*unused*/
                                  &dmpfile_read_functions,
                                  handle);
@@ -895,25 +957,27 @@ static enum audiotap_status dmpfile_init(struct audiotap **audiotap,
   return err;
 }
 
-enum audiotap_status audio2tap_open_from_file2(struct audiotap **audiotap,
+void audio2tap_invert(struct audiotap *audiotap);
+
+enum audiotap_status audio2tap_open_from_file3(struct audiotap **audiotap,
                                               char *file,
                                               struct tapenc_params *params,
                                               uint8_t *machine,
                                               uint8_t *videotype,
-                                              uint8_t *semiwaves){
+                                              uint8_t *halfwaves){
   enum audiotap_status error;
 
   if (machine == NULL || videotype == NULL)
     return AUDIOTAP_WRONG_ARGUMENTS;
-  error = tapfile_init(audiotap, file, machine, videotype, semiwaves);
+  error = tapfile_init(audiotap, file, machine, videotype, halfwaves);
   if (error == AUDIOTAP_OK)
     return AUDIOTAP_OK;
   if (error != AUDIOTAP_WRONG_FILETYPE)
     return error;
   error = dmpfile_init(audiotap, file, machine, videotype);
   if (error == AUDIOTAP_OK){
-    if (semiwaves)
-      *semiwaves = 0;
+    if (halfwaves)
+      *halfwaves = 0;
     return AUDIOTAP_OK;
   }
   if (error != AUDIOTAP_WRONG_FILETYPE)
@@ -924,7 +988,8 @@ enum audiotap_status audio2tap_open_from_file2(struct audiotap **audiotap,
                         file,
                         params,
                         *machine,
-                        *videotype);
+                        *videotype,
+                        *halfwaves);
 }
 
 static enum audiotap_status portaudio_set_buffer(void *priv, int32_t *buffer, uint32_t bufsize, uint32_t *numframes){
@@ -957,14 +1022,16 @@ static const struct audio2tap_functions portaudio_read_functions = {
   portaudio_get_total_len,
   portaudio_get_current_pos,
   portaudio_is_eof,
+  audio_invert,
   portaudio_close
 };
 
-enum audiotap_status audio2tap_from_soundcard2(struct audiotap **audiotap,
+enum audiotap_status audio2tap_from_soundcard3(struct audiotap **audiotap,
                                               uint32_t freq,
                                               struct tapenc_params *params,
                                               uint8_t machine,
-                                              uint8_t videotype){
+                                              uint8_t videotype,
+                                              uint8_t halfwaves){
   enum audiotap_status error=AUDIOTAP_LIBRARY_ERROR;
   PaStream *pastream;
 
@@ -977,13 +1044,14 @@ enum audiotap_status audio2tap_from_soundcard2(struct audiotap **audiotap,
     Pa_CloseStream(pastream);
     return AUDIOTAP_LIBRARY_ERROR;
   }
-  return audio2tap_open_common(audiotap,
-                               freq,
-                               params,
-                               machine,
-                               videotype,
-                               &portaudio_read_functions,
-                               pastream);
+  return audio2tap_audio_open_common(audiotap,
+                                     freq,
+                                     params,
+                                     machine,
+                                     videotype,
+                                     halfwaves,
+                                     &portaudio_read_functions,
+                                     pastream);
 }
 
 enum audiotap_status audio2tap_get_pulses(struct audiotap *audiotap, uint32_t *pulse, uint32_t *raw_pulse){
@@ -1008,6 +1076,11 @@ int32_t audio2tap_get_current_sound_level(struct audiotap *audiotap){
   return tapenc_get_max(audiotap->tapenc);
 }
 
+void audio2tap_invert(struct audiotap *audiotap)
+{
+  return audiotap->audio2tap_functions->invert(audiotap);
+}
+
 void audiotap_terminate(struct audiotap *audiotap){
   audiotap->terminated = 1;
 }
@@ -1030,22 +1103,12 @@ static void tapfile_set_pulse(struct audiotap *audiotap, uint32_t pulse){
 
 static uint32_t tapfile_get_buffer(struct audiotap *audiotap){
   struct tap_handle *handle = (struct tap_handle *)audiotap->priv;
-  uint32_t max_in_one_byte = 0x800;
-  uint32_t overflow_value = handle->version == 0 ? max_in_one_byte : 0xFFFFFF;
   uint8_t *buffer = audiotap->bufstart;
   uint32_t bufroom = sizeof(audiotap->bufstart);
   uint8_t not_enough_bufroom = 0;
 
-  while(handle->next_pulse >= overflow_value){
-    if(handle->version == 0){
-      if(bufroom == 0){
-        not_enough_bufroom = 1;
-        break;
-      }
-      *buffer++ = 0;
-      bufroom--;
-    }
-    else{
+  if(handle->version > 0){
+    while(handle->next_pulse >= 0xFFFFFF){
       if(bufroom < 4){
         not_enough_bufroom = 1;
         break;
@@ -1058,14 +1121,14 @@ static uint32_t tapfile_get_buffer(struct audiotap *audiotap){
       bufroom--;
       *buffer++ = 0xFF;
       bufroom--;
+      handle->next_pulse -= 0xFFFFFF;
+      if (handle->next_pulse == 0)
+        handle->exhausted = 1;
     }
-    handle->next_pulse -= overflow_value;
-    if (handle->next_pulse == 0 && handle->version > 0)
-      handle->exhausted = 1;
   }
 
   if(!not_enough_bufroom){
-    if(handle->next_pulse >= max_in_one_byte || handle->exhausted){
+    if(handle->version > 0 && (handle->next_pulse >= 0x800 || handle->exhausted)){
       if (bufroom >= 4){
         *buffer++ = 0;
         bufroom--;
@@ -1079,8 +1142,10 @@ static uint32_t tapfile_get_buffer(struct audiotap *audiotap){
         handle->exhausted = 0;
       }
     }
-    else if (handle->next_pulse > 0 && bufroom > 0){
-      if (handle->next_pulse > 0x7F8)
+    else if (bufroom > 0){
+      if (handle->next_pulse >= 0x800 && handle->version == 0)
+        handle->next_pulse = 0;
+      else if (handle->next_pulse > 0x7F8)
         handle->next_pulse = 0x7F8;
       *buffer++ = (handle->next_pulse + 7) / 8;
       bufroom--;
@@ -1176,7 +1241,7 @@ static enum audiotap_status tap2audio_open_common(struct audiotap **audiotap
       obj->priv = priv;
       obj->tap2audio_functions = functions;
       if (params == NULL ||
-          ( (obj->tapdec = tapdecoder_init(params->volume, params->inverted, params->semiwaves, params->waveform)) != NULL)
+          ( (obj->tapdec = tapdecoder_init(params->volume, params->inverted, params->halfwaves, params->waveform)) != NULL)
          )
         error = AUDIOTAP_OK;
     }
