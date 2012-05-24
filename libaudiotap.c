@@ -948,7 +948,7 @@ static enum audiotap_status dmpfile_init(struct audiotap **audiotap,
   if (err == AUDIOTAP_OK)
     return audio2tap_open_common(audiotap,
                                  NULL,
-                                 0, /*unused*/
+                                 tap_clocks[*machine][*videotype] / freq,
                                  &dmpfile_read_functions,
                                  handle);
   if (handle->file != NULL)
