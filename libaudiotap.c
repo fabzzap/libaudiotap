@@ -132,7 +132,7 @@ static const char* audiofile_library_name =
 #endif
   if (!handle) {
     return LIBRARY_MISSING;
-  };
+  }
 
 #if defined(WIN32)
   afOpenFile = (void*)GetProcAddress(handle, "afOpenFile");
@@ -141,7 +141,7 @@ static const char* audiofile_library_name =
 #endif
   if (!afOpenFile) {
     return LIBRARY_SYMBOLS_MISSING;
-  };
+  }
 
 #if defined(WIN32)
   afCloseFile = (void*)GetProcAddress(handle, "afCloseFile");
@@ -150,7 +150,7 @@ static const char* audiofile_library_name =
 #endif
   if (!afCloseFile) {
     return LIBRARY_SYMBOLS_MISSING;
-  };
+  }
 
 #if defined(WIN32)
   afReadFrames = (void*)GetProcAddress(handle, "afReadFrames");
@@ -159,7 +159,7 @@ static const char* audiofile_library_name =
 #endif
   if (!afReadFrames) {
     return LIBRARY_SYMBOLS_MISSING;
-  };
+  }
 
 #if defined(WIN32)
   afWriteFrames = (void*)GetProcAddress(handle, "afWriteFrames");
@@ -168,7 +168,7 @@ static const char* audiofile_library_name =
 #endif
   if (!afWriteFrames) {
     return LIBRARY_SYMBOLS_MISSING;
-  };
+  }
 
 #if defined(WIN32)
   afSetVirtualChannels = (void*)GetProcAddress(handle, "afSetVirtualChannels");
@@ -177,7 +177,7 @@ static const char* audiofile_library_name =
 #endif
   if (!afSetVirtualChannels) {
     return LIBRARY_SYMBOLS_MISSING;
-  };
+  }
 
 #if defined(WIN32)
   afGetSampleFormat = (void*)GetProcAddress(handle, "afGetSampleFormat");
@@ -186,7 +186,7 @@ static const char* audiofile_library_name =
 #endif
   if (!afGetSampleFormat) {
     return LIBRARY_SYMBOLS_MISSING;
-  };
+  }
 
 #if defined(WIN32)
   afSetVirtualSampleFormat = (void*)GetProcAddress(handle, "afSetVirtualSampleFormat");
@@ -195,7 +195,7 @@ static const char* audiofile_library_name =
 #endif
   if (!afSetVirtualSampleFormat) {
     return LIBRARY_SYMBOLS_MISSING;
-  };
+  }
 
 #if defined(WIN32)
   afGetVirtualFrameSize = (void*)GetProcAddress(handle, "afGetVirtualFrameSize");
@@ -204,7 +204,7 @@ static const char* audiofile_library_name =
 #endif
   if (!afGetVirtualFrameSize) {
     return LIBRARY_SYMBOLS_MISSING;
-  };
+  }
 
 #if defined(WIN32)
   afGetFrameCount = (void*)GetProcAddress(handle, "afGetFrameCount");
@@ -213,7 +213,7 @@ static const char* audiofile_library_name =
 #endif
   if (!afGetFrameCount) {
     return LIBRARY_SYMBOLS_MISSING;
-  };
+  }
 
 #if defined(WIN32)
   afTellFrame = (void*)GetProcAddress(handle, "afTellFrame");
@@ -222,7 +222,7 @@ static const char* audiofile_library_name =
 #endif
   if (!afTellFrame) {
     return LIBRARY_SYMBOLS_MISSING;
-  };
+  }
 
 #if defined(WIN32)
   afInitFileFormat = (void*)GetProcAddress(handle, "afInitFileFormat");
@@ -231,7 +231,7 @@ static const char* audiofile_library_name =
 #endif
   if (!afInitFileFormat) {
     return LIBRARY_SYMBOLS_MISSING;
-  };
+  }
 
 #if defined(WIN32)
   afInitSampleFormat = (void*)GetProcAddress(handle, "afInitSampleFormat");
@@ -240,7 +240,7 @@ static const char* audiofile_library_name =
 #endif
   if (!afInitSampleFormat) {
     return LIBRARY_SYMBOLS_MISSING;
-  };
+  }
 
 #if defined(WIN32)
   afInitChannels = (void*)GetProcAddress(handle, "afInitChannels");
@@ -249,7 +249,7 @@ static const char* audiofile_library_name =
 #endif
   if (!afInitChannels) {
     return LIBRARY_SYMBOLS_MISSING;
-  };
+  }
 
 #if defined(WIN32)
   afInitRate = (void*)GetProcAddress(handle, "afInitRate");
@@ -258,7 +258,7 @@ static const char* audiofile_library_name =
 #endif
   if (!afInitRate) {
     return LIBRARY_SYMBOLS_MISSING;
-  };
+  }
 
 #if defined(WIN32)
   afGetRate = (void*)GetProcAddress(handle, "afGetRate");
@@ -267,7 +267,7 @@ static const char* audiofile_library_name =
 #endif
   if (!afGetRate) {
     return LIBRARY_SYMBOLS_MISSING;
-  };
+  }
 
 #if defined(WIN32)
   afNewFileSetup = (void*)GetProcAddress(handle, "afNewFileSetup");
@@ -276,7 +276,7 @@ static const char* audiofile_library_name =
 #endif
   if (!afNewFileSetup) {
     return LIBRARY_SYMBOLS_MISSING;
-  };
+  }
 
 #if defined(WIN32)
   afFreeFileSetup = (void*)GetProcAddress(handle, "afFreeFileSetup");
@@ -285,7 +285,7 @@ static const char* audiofile_library_name =
 #endif
   if (!afFreeFileSetup) {
     return LIBRARY_SYMBOLS_MISSING;
-  };
+  }
 
   return LIBRARY_OK;
 }
@@ -665,7 +665,7 @@ static int tapfile_get_current_pos(struct audiotap *audiotap){
   if ((res = ftell(handle->file)) == -1)
     return -1;
   return (int)(res - 1);
-};
+}
 
 static void tapfile_close(void *priv){
   struct tap_handle *handle = (struct tap_handle *)priv;
@@ -1142,7 +1142,7 @@ static uint32_t tapfile_get_buffer(struct audiotap *audiotap){
         handle->exhausted = 0;
       }
     }
-    else if (bufroom > 0){
+    else if (bufroom > 0 && handle->next_pulse > 0){
       if (handle->next_pulse >= 0x800 && handle->version == 0)
         handle->next_pulse = 0;
       else if (handle->next_pulse > 0x7F8)
@@ -1184,7 +1184,7 @@ static void tapfile_write_close(void *file){
   }while(0);
   fclose(handle->file);
   free(handle);
-};
+}
 
 static const struct tap2audio_functions tapfile_write_functions = {
   tapfile_set_pulse,
