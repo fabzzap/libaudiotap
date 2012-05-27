@@ -6,7 +6,7 @@ all:audiotap.dll
 clean:
 	rm -f *.o *.dll *.lib *~ *.so
 
-%.so: %.o %_external_symbols.o
+libaudiotap.so: libaudiotap.o libaudiotap_external_symbols.o
 	$(CC) -shared -o $@ $^ -ldl $(LDFLAGS)
 
 LIBTAP_DIR=../libtap

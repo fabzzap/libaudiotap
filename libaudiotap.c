@@ -231,7 +231,7 @@ static int tapfile_is_eof(struct audiotap *audiotap){
   return feof(handle->file);
 }
 
-void tapfile_invert(struct audiotap *audiotap)
+static void tapfile_invert(struct audiotap *audiotap)
 {
   struct tap_handle *handle = (struct tap_handle *)audiotap->priv;
   handle->temp_get_half_waves_in_v2 = 1;
@@ -362,7 +362,7 @@ static int audiofile_is_eof(struct audiotap *audiotap){
   return audiotap->has_flushed;
 }
 
-const struct audio2tap_functions audiofile_read_functions = {
+static const struct audio2tap_functions audiofile_read_functions = {
   audio_get_pulse,
   audiofile_set_buffer,
   audiofile_get_total_len,

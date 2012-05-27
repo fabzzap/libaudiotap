@@ -55,8 +55,8 @@ typedef enum PaErrorCode
     paBadBufferPtr
 } PaErrorCode;
 
-PaError (*Pa_Initialize)( void );
-PaError (*Pa_Terminate)( void );
+EXTERN PaError (*Pa_Initialize)( void );
+EXTERN PaError (*Pa_Terminate)( void );
 
 typedef void PaStream;
 EXTERN PaError (*Pa_OpenDefaultStream)( PaStream** stream,
