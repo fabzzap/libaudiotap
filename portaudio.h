@@ -10,6 +10,12 @@
  * See file LESSER-LICENSE.TXT for details.
  */
 
+#if !defined PORTAUDIO_DECLARE_HERE
+#define EXTERN extern
+#elif __GNUC__ >= 4
+#define EXTERN __attribute__ ((visibility ("hidden")))
+#endif
+
 typedef int PaError;
 typedef unsigned long PaSampleFormat;
 #define paInt32          ((PaSampleFormat) 0x00000002) /**< @see PaSampleFormat */
@@ -53,7 +59,7 @@ PaError (*Pa_Initialize)( void );
 PaError (*Pa_Terminate)( void );
 
 typedef void PaStream;
-PaError (*Pa_OpenDefaultStream)( PaStream** stream,
+EXTERN PaError (*Pa_OpenDefaultStream)( PaStream** stream,
                              int numInputChannels,
                              int numOutputChannels,
                              PaSampleFormat sampleFormat,
@@ -61,12 +67,12 @@ PaError (*Pa_OpenDefaultStream)( PaStream** stream,
                              unsigned long framesPerBuffer,
                              void *streamCallback,
                              void *userData );
-PaError (*Pa_CloseStream)( PaStream *stream );
-PaError (*Pa_StartStream)( PaStream *stream );
-PaError (*Pa_StopStream)( PaStream *stream );
-PaError (*Pa_ReadStream)( PaStream* stream,
+EXTERN PaError (*Pa_CloseStream)( PaStream *stream );
+EXTERN PaError (*Pa_StartStream)( PaStream *stream );
+EXTERN PaError (*Pa_StopStream)( PaStream *stream );
+EXTERN PaError (*Pa_ReadStream)( PaStream* stream,
                       void *buffer,
                       unsigned long frames );
-PaError (*Pa_WriteStream)( PaStream* stream,
+EXTERN PaError (*Pa_WriteStream)( PaStream* stream,
                        const void *buffer,
                        unsigned long frames );

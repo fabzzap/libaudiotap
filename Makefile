@@ -1,11 +1,27 @@
 all:audiotap.dll
 
-%.dll: lib%.c %.def
-	$(CC) $(CFLAGS) -shared -I../libtap -Wl,--out-implib=audiotap.lib -o $@ $^ $(LDFLAGS)
+%.dll: lib%.o lib%_external_symbols.o %.def
+	$(CC) -shared -Wl,--out-implib=audiotap.lib -o $@ $^ $(LDFLAGS)
 
 clean:
 	rm -f *.o *.dll *.lib *~ *.so
 
-%.so: %.c
-	$(CC) $(CFLAGS) -shared -I../libtap -o $@ $^ -ldl $(LDFLAGS)
+%.so: %.o %_external_symbols.o
+	$(CC) -shared -o $@ $^ -ldl $(LDFLAGS)
+
+LIBTAP_DIR=../libtap
+
+CFLAGS+=-I$(LIBTAP_DIR)
+
+ifdef DEBUG
+ CFLAGS+=-g
+endif
+
+ifdef LINUX64BIT
+ CFLAGS+=-fPIC
+endif
+
+ifdef USE_RPATH
+ LDFLAGS=-Wl,-rpath=$(LIBTAP_DIR)
+endif
 

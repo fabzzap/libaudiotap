@@ -17,11 +17,17 @@
 #include <stdint.h>
 #include "tap_types.h"
 
+#if !defined TAPENCODER_DECLARE_HERE
+#define EXTERN extern
+#elif __GNUC__ >= 4
+#define EXTERN __attribute__ ((visibility ("hidden")))
+#endif
+
 struct tap_enc_t;
 
-struct tap_enc_t *(*tapencoder_init)(uint32_t min_duration, uint8_t sensitivity, uint8_t initial_threshold, uint8_t inverted, uint8_t semiwaves);
-uint32_t (*tapenc_get_pulse)(struct tap_enc_t *tap, int32_t *buffer, uint32_t buflen, uint32_t *pulse);
-uint32_t (*tapenc_flush)(struct tap_enc_t *tap);
-int32_t (*tapenc_get_max)(struct tap_enc_t *tap);
-void (*tapenc_invert)(struct tap_enc_t *tap);
+EXTERN struct tap_enc_t *(*tapencoder_init)(uint32_t min_duration, uint8_t sensitivity, uint8_t initial_threshold, uint8_t inverted, uint8_t semiwaves);
+EXTERN uint32_t (*tapenc_get_pulse)(struct tap_enc_t *tap, int32_t *buffer, uint32_t buflen, uint32_t *pulse);
+EXTERN uint32_t (*tapenc_flush)(struct tap_enc_t *tap);
+EXTERN int32_t (*tapenc_get_max)(struct tap_enc_t *tap);
+EXTERN void (*tapenc_invert)(struct tap_enc_t *tap);
 

@@ -10,6 +10,14 @@
  * See file LESSER-LICENSE.TXT for details.
  */
 
+#if !defined AUDIOFILE_DECLARE_HERE
+#define EXTERN extern
+#elif __GNUC__ >= 4
+#define EXTERN __attribute__ ((visibility ("hidden")))
+#endif
+
+#include <sys/types.h>
+
 typedef struct _AFfilesetup *AFfilesetup;
 typedef struct _AFfilehandle *AFfilehandle;
 
@@ -123,27 +131,27 @@ enum
 };
 
 /* basic operations on file handles and file setups */
-static AFfilesetup (*afNewFileSetup) (void);
-static void (*afFreeFileSetup) (AFfilesetup);
+EXTERN AFfilesetup (*afNewFileSetup) (void);
+EXTERN void (*afFreeFileSetup) (AFfilesetup);
 
-static AFfilehandle (*afOpenFile) (const char *filename, const char *mode,
+EXTERN AFfilehandle (*afOpenFile) (const char *filename, const char *mode,
   AFfilesetup setup);
-static int (*afCloseFile) (AFfilehandle file);
-static void (*afInitFileFormat) (AFfilesetup, int format);
-static int (*afReadFrames) (AFfilehandle, int track, void *buffer, int frameCount);
-static int (*afWriteFrames) (AFfilehandle, int track, const void *buffer, int frameCount);
-static AFfileoffset (*afTellFrame) (AFfilehandle, int track);
-static float (*afGetFrameSize) (AFfilehandle file, int track, int expand3to4);
-static float (*afGetVirtualFrameSize) (AFfilehandle, int track, int expand3to4);
-static void (*afInitChannels) (AFfilesetup, int track, int nchannels);
-static int (*afGetChannels) (AFfilehandle, int track);
-static int (*afSetVirtualChannels) (AFfilehandle, int track, int channelCount);
-static void (*afInitSampleFormat) (AFfilesetup, int track, int sampleFormat,
+EXTERN int (*afCloseFile) (AFfilehandle file);
+EXTERN void (*afInitFileFormat) (AFfilesetup, int format);
+EXTERN int (*afReadFrames) (AFfilehandle, int track, void *buffer, int frameCount);
+EXTERN int (*afWriteFrames) (AFfilehandle, int track, const void *buffer, int frameCount);
+EXTERN AFfileoffset (*afTellFrame) (AFfilehandle, int track);
+EXTERN float (*afGetFrameSize) (AFfilehandle file, int track, int expand3to4);
+EXTERN float (*afGetVirtualFrameSize) (AFfilehandle, int track, int expand3to4);
+EXTERN void (*afInitChannels) (AFfilesetup, int track, int nchannels);
+EXTERN int (*afGetChannels) (AFfilehandle, int track);
+EXTERN int (*afSetVirtualChannels) (AFfilehandle, int track, int channelCount);
+EXTERN void (*afInitSampleFormat) (AFfilesetup, int track, int sampleFormat,
         int sampleWidth);
-static void (*afGetSampleFormat) (AFfilehandle file, int track, int *sampfmt,
+EXTERN void (*afGetSampleFormat) (AFfilehandle file, int track, int *sampfmt,
         int *sampwidth);
-static int (*afSetVirtualSampleFormat) (AFfilehandle, int track,
+EXTERN int (*afSetVirtualSampleFormat) (AFfilehandle, int track,
         int sampleFormat, int sampleWidth);
-static void (*afInitRate) (AFfilesetup, int track, double rate);
-static double (*afGetRate) (AFfilehandle, int track);
-static AFframecount (*afGetFrameCount) (AFfilehandle file, int track);
+EXTERN void (*afInitRate) (AFfilesetup, int track, double rate);
+EXTERN double (*afGetRate) (AFfilehandle, int track);
+EXTERN AFframecount (*afGetFrameCount) (AFfilehandle file, int track);
