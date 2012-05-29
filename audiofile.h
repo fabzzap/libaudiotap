@@ -14,6 +14,8 @@
 #define EXTERN extern
 #elif __GNUC__ >= 4
 #define EXTERN __attribute__ ((visibility ("hidden")))
+#else
+#define EXTERN
 #endif
 
 #include <sys/types.h>

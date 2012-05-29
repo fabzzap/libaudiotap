@@ -248,7 +248,7 @@ static const struct audio2tap_functions tapfile_read_functions = {
 };
 
 static enum audiotap_status tapfile_init(struct audiotap **audiotap,
-                                         char *file,
+                                         const char *file,
                                          uint8_t *machine,
                                          uint8_t *videotype,
                                          uint8_t *halfwaves){
@@ -373,11 +373,11 @@ static const struct audio2tap_functions audiofile_read_functions = {
 };
 
 static enum audiotap_status audiofile_read_init(struct audiotap **audiotap,
-                                                 char *file,
-                                                 struct tapenc_params *params,
-                                                 uint8_t machine,
-                                                 uint8_t videotype,
-                                                 uint8_t halfwaves){
+                                                const char *file,
+                                                struct tapenc_params *params,
+                                                uint8_t machine,
+                                                uint8_t videotype,
+                                                uint8_t halfwaves){
   uint32_t freq;
   enum audiotap_status error = AUDIOTAP_LIBRARY_ERROR;
   AFfilehandle fh;
@@ -447,9 +447,9 @@ static const struct audio2tap_functions dmpfile_read_functions = {
 
 
 static enum audiotap_status dmpfile_init(struct audiotap **audiotap,
-                                  char *file,
-                                  uint8_t *machine,
-                                  uint8_t *videotype){
+                                         const char *file,
+                                         uint8_t *machine,
+                                         uint8_t *videotype){
   uint32_t freq;
   uint8_t version;
   uint8_t freq_on_file[4];
@@ -511,7 +511,7 @@ static enum audiotap_status dmpfile_init(struct audiotap **audiotap,
 void audio2tap_invert(struct audiotap *audiotap);
 
 enum audiotap_status audio2tap_open_from_file3(struct audiotap **audiotap,
-                                              char *file,
+                                              const char *file,
                                               struct tapenc_params *params,
                                               uint8_t *machine,
                                               uint8_t *videotype,
@@ -629,7 +629,7 @@ int32_t audio2tap_get_current_sound_level(struct audiotap *audiotap){
 
 void audio2tap_invert(struct audiotap *audiotap)
 {
-  return audiotap->audio2tap_functions->invert(audiotap);
+  audiotap->audio2tap_functions->invert(audiotap);
 }
 
 void audiotap_terminate(struct audiotap *audiotap){
@@ -753,7 +753,7 @@ static uint32_t audio_get_buffer(struct audiotap *audiotap){
 }
 
 static enum audiotap_status audiofile_dump_buffer(uint8_t *buffer, uint32_t bufsize, void *priv){
-  return (afWriteFrames((AFfilehandle)priv, AF_DEFAULT_TRACK, buffer, (int)bufsize) == bufsize) ? AUDIOTAP_OK : AUDIOTAP_LIBRARY_ERROR;
+  return (afWriteFrames((AFfilehandle)priv, AF_DEFAULT_TRACK, buffer, (int)bufsize) == (int)bufsize) ? AUDIOTAP_OK : AUDIOTAP_LIBRARY_ERROR;
 }
 
 static const struct tap2audio_functions audiofile_write_functions = {
@@ -783,7 +783,10 @@ static enum audiotap_status tap2audio_open_common(struct audiotap **audiotap
                                                  ,void *priv){
   struct audiotap *obj = NULL;
   enum audiotap_status error = AUDIOTAP_WRONG_ARGUMENTS;
-
+  enum tapdec_waveform waveform = 
+    params->waveform == AUDIOTAP_WAVE_TRIANGLE ? TAPDEC_TRIANGLE :
+    params->waveform == AUDIOTAP_WAVE_SQUARE   ? TAPDEC_SQUARE   :
+                                                 TAPDEC_SINE;
   if (machine <= TAP_MACHINE_MAX && videotype <= TAP_VIDEOTYPE_MAX){
     error = AUDIOTAP_NO_MEMORY;
     obj=calloc(1, sizeof(struct audiotap));
@@ -792,7 +795,7 @@ static enum audiotap_status tap2audio_open_common(struct audiotap **audiotap
       obj->priv = priv;
       obj->tap2audio_functions = functions;
       if (params == NULL ||
-          ( (obj->tapdec = tapdecoder_init(params->volume, params->inverted, params->halfwaves, params->waveform)) != NULL)
+          ( (obj->tapdec = tapdecoder_init(params->volume, params->inverted, params->halfwaves, waveform)) != NULL)
          )
         error = AUDIOTAP_OK;
     }

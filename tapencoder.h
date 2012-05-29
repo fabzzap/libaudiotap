@@ -15,12 +15,13 @@
  */
 
 #include <stdint.h>
-#include "tap_types.h"
 
 #if !defined TAPENCODER_DECLARE_HERE
 #define EXTERN extern
 #elif __GNUC__ >= 4
 #define EXTERN __attribute__ ((visibility ("hidden")))
+#else
+#define EXTERN
 #endif
 
 struct tap_enc_t;

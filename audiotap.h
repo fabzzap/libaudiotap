@@ -20,7 +20,6 @@
 #define AUDIOTAP_H
 
 #include <stdint.h>
-#include "tap_types.h"
 
 enum library_status {
   LIBRARY_UNINIT,
@@ -74,7 +73,7 @@ struct tapenc_params {
 };
 
 enum audiotap_status audio2tap_open_from_file3(struct audiotap **audiotap,
-                                              char *file,
+                                              const char *file,
                                               struct tapenc_params *params,
                                               uint8_t *machine,
                                               uint8_t *videotype,
@@ -109,24 +108,28 @@ struct tapdec_params {
   uint8_t volume;
   uint8_t inverted;
   uint8_t halfwaves;
-  enum tapdec_waveform waveform;
+  enum {
+    AUDIOTAP_WAVE_TRIANGLE,
+    AUDIOTAP_WAVE_SQUARE,
+    AUDIOTAP_WAVE_SINE
+  } waveform;
 };
 
-enum audiotap_status tap2audio_open_to_soundcard2(struct audiotap **audiotap
+enum audiotap_status tap2audio_open_to_soundcard3(struct audiotap **audiotap
                                                 ,struct tapdec_params *params
                                                 ,uint32_t freq
                                                 ,uint8_t machine
                                                 ,uint8_t videotype);
 
-enum audiotap_status tap2audio_open_to_wavfile2(struct audiotap **audiotap
-                                              ,char *file
+enum audiotap_status tap2audio_open_to_wavfile3(struct audiotap **audiotap
+                                              ,const char *file
                                               ,struct tapdec_params *params
                                               ,uint32_t freq
                                               ,uint8_t machine
                                               ,uint8_t videotype);
 
-enum audiotap_status tap2audio_open_to_tapfile(struct audiotap **audiotap
-                                              ,char *name
+enum audiotap_status tap2audio_open_to_tapfile2(struct audiotap **audiotap
+                                              ,const char *name
                                               ,uint8_t version
                                               ,uint8_t machine
                                               ,uint8_t videotype);

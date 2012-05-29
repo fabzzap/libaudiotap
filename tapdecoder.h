@@ -14,17 +14,22 @@
  */
 
 #include <stdint.h>
-#include "tap_types.h"
 
 #if !defined TAPDECODER_DECLARE_HERE
 #define EXTERN extern
 #elif __GNUC__ >= 4
 #define EXTERN __attribute__ ((visibility ("hidden")))
+#else
+#define EXTERN
 #endif
 
 struct tap_dec_t;
+enum tapdec_waveform {
+  TAPDEC_TRIANGLE,
+  TAPDEC_SQUARE,
+  TAPDEC_SINE
+};
 
 EXTERN struct tap_dec_t *(*tapdecoder_init)(uint32_t volume, uint8_t inverted, uint8_t semiwaves, enum tapdec_waveform waveform);
 EXTERN void (*tapdec_set_pulse)(struct tap_dec_t *tap, uint32_t pulse);
 EXTERN uint32_t (*tapdec_get_buffer)(struct tap_dec_t *tap, int32_t *buffer, unsigned int buflen);
-
