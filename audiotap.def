@@ -12,8 +12,8 @@ audio2tap_is_eof
 audiotap_terminate
 audio2tap_invert
 audio2tap_close
-tap2audio_open_to_soundcard2
-tap2audio_open_to_wavfile2
-tap2audio_open_to_tapfile
+tap2audio_open_to_soundcard3
+tap2audio_open_to_wavfile3
+tap2audio_open_to_tapfile2
 tap2audio_set_pulse
 tap2audio_close

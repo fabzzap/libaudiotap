@@ -811,11 +811,11 @@ static enum audiotap_status tap2audio_open_common(struct audiotap **audiotap
   return error;
 }
 
-enum audiotap_status tap2audio_open_to_soundcard2(struct audiotap **audiotap
-                                                ,struct tapdec_params *params
-                                                ,uint32_t freq
-                                                ,uint8_t machine
-                                                ,uint8_t videotype){
+enum audiotap_status tap2audio_open_to_soundcard3(struct audiotap **audiotap
+                                                 ,struct tapdec_params *params
+                                                 ,uint32_t freq
+                                                 ,uint8_t machine
+                                                 ,uint8_t videotype){
   PaStream *pastream;
 
   if (status.portaudio_init_status != LIBRARY_OK
@@ -837,12 +837,12 @@ enum audiotap_status tap2audio_open_to_soundcard2(struct audiotap **audiotap
                               ,pastream);
 }
 
-enum audiotap_status tap2audio_open_to_wavfile2(struct audiotap **audiotap
-                                              ,char *file
-                                              ,struct tapdec_params *params
-                                              ,uint32_t freq
-                                              ,uint8_t machine
-                                              ,uint8_t videotype){
+enum audiotap_status tap2audio_open_to_wavfile3(struct audiotap **audiotap
+                                               ,const char *file
+                                               ,struct tapdec_params *params
+                                               ,uint32_t freq
+                                               ,uint8_t machine
+                                               ,uint8_t videotype){
   AFfilehandle fh;
   AFfilesetup setup;
 
@@ -875,11 +875,11 @@ enum audiotap_status tap2audio_open_to_wavfile2(struct audiotap **audiotap
                               ,fh);
 }
 
-enum audiotap_status tap2audio_open_to_tapfile(struct audiotap **audiotap
-                                                 ,char *name
-                                                 ,uint8_t version
-                                                 ,uint8_t machine
-                                                 ,uint8_t videotype){
+enum audiotap_status tap2audio_open_to_tapfile2(struct audiotap **audiotap
+                                               ,const char *name
+                                               ,uint8_t version
+                                               ,uint8_t machine
+                                               ,uint8_t videotype){
   struct tap_handle *handle;
   const char *tap_header = (machine == TAP_MACHINE_C16 ? c16_tap_header : c64_tap_header);
   enum audiotap_status error = AUDIOTAP_LIBRARY_ERROR;
