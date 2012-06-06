@@ -95,21 +95,32 @@ static uint32_t convert_samples(struct audiotap *audiotap, uint32_t raw_samples)
 
 static enum audiotap_status audio2tap_open_common(struct audiotap **audiotap,
                                                   struct tap_enc_t *tapenc,
-                                                  float factor,
+                                                  uint32_t freq,
+                                                  uint8_t machine,
+                                                  uint8_t videotype,
                                                   const struct audio2tap_functions *audio2tap_functions,
                                                   void *priv){
-  struct audiotap *obj = calloc(1, sizeof(struct audiotap));
-  if (obj == NULL){
-    audio2tap_close(obj);
-    return AUDIOTAP_NO_MEMORY;
-  }
-  obj->priv = priv;
-  obj->audio2tap_functions = audio2tap_functions;
-  obj->bufroom = 0;
-  obj->factor = factor;
-  obj->tapenc = tapenc;
-  *audiotap = obj;
-  return AUDIOTAP_OK;
+  struct audiotap *obj = NULL;
+  enum audiotap_status error = AUDIOTAP_WRONG_ARGUMENTS;
+  do{
+	  if (machine > TAP_MACHINE_MAX || videotype > TAP_VIDEOTYPE_MAX)
+      break;
+    error = AUDIOTAP_NO_MEMORY;
+    obj = calloc(1, sizeof(struct audiotap));	 
+    if (obj == NULL)	 
+      break;
+    obj->priv = priv;
+    obj->audio2tap_functions = audio2tap_functions;
+    obj->bufroom = 0;
+    obj->factor = tap_clocks[machine][videotype] / freq;	 
+    obj->tapenc = tapenc;
+    error = AUDIOTAP_OK;
+  }while(0);
+ if (error == AUDIOTAP_OK)
+   *audiotap = obj;
+ else	 
+   audio2tap_close(obj);  *audiotap = obj;
+  return error;
 }
 
 static enum audiotap_status audio2tap_audio_open_common(struct audiotap **audiotap,
@@ -124,7 +135,7 @@ static enum audiotap_status audio2tap_audio_open_common(struct audiotap **audiot
   struct tap_enc_t *tapenc;
 
   do{
-    if (machine > TAP_MACHINE_MAX || videotype > TAP_VIDEOTYPE_MAX || tapenc_params == NULL)
+    if (tapenc_params == NULL)
       break;
 
     error = AUDIOTAP_NO_MEMORY;
@@ -146,7 +157,7 @@ static enum audiotap_status audio2tap_audio_open_common(struct audiotap **audiot
     audio2tap_functions->close(priv);
     return error;
   }
-  return audio2tap_open_common(audiotap, tapenc, tap_clocks[machine][videotype] / freq, audio2tap_functions, priv);
+  return audio2tap_open_common(audiotap, tapenc, freq, machine, videotype, audio2tap_functions, priv);
 }
 
 static enum audiotap_status tapfile_get_pulse(struct audiotap *audiotap, uint32_t *pulse, uint32_t *raw_pulse){
@@ -156,6 +167,8 @@ static enum audiotap_status tapfile_get_pulse(struct audiotap *audiotap, uint32_
   *pulse = 0;
 
   while(1){
+    if (audiotap->terminated)
+      return AUDIOTAP_INTERRUPTED;
     if (fread(&byte, 1, 1, handle->file) != 1)
       return AUDIOTAP_EOF;
     if (byte != 0){
@@ -299,6 +312,8 @@ static enum audiotap_status tapfile_init(struct audiotap **audiotap,
     return audio2tap_open_common(audiotap,
                                  NULL,
                                  0, /*unused*/
+                                 *machine,
+                                 *videotype,
                                  &tapfile_read_functions,
                                  handle);
   }
@@ -499,7 +514,9 @@ static enum audiotap_status dmpfile_init(struct audiotap **audiotap,
   if (err == AUDIOTAP_OK)
     return audio2tap_open_common(audiotap,
                                  NULL,
-                                 tap_clocks[*machine][*videotype] / freq,
+                                 freq,
+                                 *machine,
+                                 *videotype,
                                  &dmpfile_read_functions,
                                  handle);
   if (handle->file != NULL)
@@ -618,7 +635,7 @@ int audio2tap_get_current_pos(struct audiotap *audiotap){
 }
 
 int audio2tap_is_eof(struct audiotap *audiotap){
-  return audiotap->audio2tap_functions->is_eof(audiotap);
+  return audiotap->terminated == 1 || audiotap->audio2tap_functions->is_eof(audiotap);
 }
 
 int32_t audio2tap_get_current_sound_level(struct audiotap *audiotap){
@@ -634,6 +651,10 @@ void audio2tap_invert(struct audiotap *audiotap)
 
 void audiotap_terminate(struct audiotap *audiotap){
   audiotap->terminated = 1;
+}
+
+int audiotap_is_terminated(struct audiotap *audiotap){
+  return audiotap->terminated;
 }
 
 void audio2tap_close(struct audiotap *audiotap){
@@ -783,10 +804,6 @@ static enum audiotap_status tap2audio_open_common(struct audiotap **audiotap
                                                  ,void *priv){
   struct audiotap *obj = NULL;
   enum audiotap_status error = AUDIOTAP_WRONG_ARGUMENTS;
-  enum tapdec_waveform waveform = 
-    params->waveform == AUDIOTAP_WAVE_TRIANGLE ? TAPDEC_TRIANGLE :
-    params->waveform == AUDIOTAP_WAVE_SQUARE   ? TAPDEC_SQUARE   :
-                                                 TAPDEC_SINE;
   if (machine <= TAP_MACHINE_MAX && videotype <= TAP_VIDEOTYPE_MAX){
     error = AUDIOTAP_NO_MEMORY;
     obj=calloc(1, sizeof(struct audiotap));
@@ -794,10 +811,22 @@ static enum audiotap_status tap2audio_open_common(struct audiotap **audiotap
       obj->factor = tap_clocks[machine][videotype] / freq;
       obj->priv = priv;
       obj->tap2audio_functions = functions;
-      if (params == NULL ||
-          ( (obj->tapdec = tapdecoder_init(params->volume, params->inverted, params->halfwaves, waveform)) != NULL)
-         )
+      if (params == NULL)
         error = AUDIOTAP_OK;
+      else{
+        enum tapdec_waveform waveform =
+          params->waveform == AUDIOTAP_WAVE_TRIANGLE ? TAPDEC_TRIANGLE :
+          params->waveform == AUDIOTAP_WAVE_SQUARE   ? TAPDEC_SQUARE   :
+                                                       TAPDEC_SINE;
+        if(
+           (obj->tapdec = tapdecoder_init(params->volume,
+                                          params->inverted,
+                                          params->halfwaves,
+                                          waveform))
+            != NULL
+          )
+          error = AUDIOTAP_OK;
+      }
     }
   }
 

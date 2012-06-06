@@ -99,6 +99,7 @@ int32_t audio2tap_get_current_sound_level(struct audiotap *audiotap);
 void audio2tap_invert(struct audiotap *audiotap);
 
 void audiotap_terminate(struct audiotap *audiotap);
+int audiotap_is_terminated(struct audiotap *audiotap);
 
 void audio2tap_close(struct audiotap *audiotap);
 
