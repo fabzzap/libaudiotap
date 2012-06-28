@@ -268,9 +268,6 @@ static enum audiotap_status tapfile_init(struct audiotap **audiotap,
   struct tap_handle *handle;
   enum audiotap_status err;
 
-  if (halfwaves == NULL)
-    return AUDIOTAP_WRONG_ARGUMENTS;
-
   handle = malloc(sizeof(struct tap_handle));
   if (handle == NULL)
     return AUDIOTAP_NO_MEMORY;
@@ -464,7 +461,8 @@ static const struct audio2tap_functions dmpfile_read_functions = {
 static enum audiotap_status dmpfile_init(struct audiotap **audiotap,
                                          const char *file,
                                          uint8_t *machine,
-                                         uint8_t *videotype){
+                                         uint8_t *videotype,
+                                         uint8_t *halfwaves){
   uint32_t freq;
   uint8_t version;
   uint8_t freq_on_file[4];
@@ -490,10 +488,16 @@ static enum audiotap_status dmpfile_init(struct audiotap **audiotap,
       break;
     if (fread(&version, 1, 1, handle->file) < 1)
       break;
-    if (version > 0)
+    if (version > 1)
       break;
     if (fread(machine, 1, 1, handle->file) < 1)
       break;
+    if (version == 1) {
+      handle->get_full_waves_in_v2 = (*machine & (1<<5)) && *halfwaves == 0;
+      *halfwaves = *machine & (1<<5) != 0;
+      *machine = *machine & 0x0f;
+    }
+    handle->temp_get_half_waves_in_v2 = 0;
     if (*machine > TAP_MACHINE_MAX)
       break;
     if (fread(videotype, 1, 1, handle->file) < 1)
@@ -535,19 +539,16 @@ enum audiotap_status audio2tap_open_from_file3(struct audiotap **audiotap,
                                               uint8_t *halfwaves){
   enum audiotap_status error;
 
-  if (machine == NULL || videotype == NULL)
+  if (machine == NULL || videotype == NULL || halfwaves == NULL)
     return AUDIOTAP_WRONG_ARGUMENTS;
   error = tapfile_init(audiotap, file, machine, videotype, halfwaves);
   if (error == AUDIOTAP_OK)
     return AUDIOTAP_OK;
   if (error != AUDIOTAP_WRONG_FILETYPE)
     return error;
-  error = dmpfile_init(audiotap, file, machine, videotype);
-  if (error == AUDIOTAP_OK){
-    if (halfwaves)
-      *halfwaves = 0;
+  error = dmpfile_init(audiotap, file, machine, videotype, halfwaves);
+  if (error == AUDIOTAP_OK)
     return AUDIOTAP_OK;
-  }
   if (error != AUDIOTAP_WRONG_FILETYPE)
     return error;
   if (params == NULL)
