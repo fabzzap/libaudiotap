@@ -10,6 +10,7 @@ audio2tap_get_current_pos
 audio2tap_get_current_sound_level
 audio2tap_is_eof
 audiotap_terminate
+audiotap_terminate_lib
 audiotap_is_terminated
 audio2tap_invert
 audio2tap_close

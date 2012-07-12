@@ -63,7 +63,7 @@ enum audiotap_status{
 struct audiotap; /* hide structure of audiotap from applications */
 
 struct audiotap_init_status audiotap_initialize2(void);
-
+void audiotap_terminate_lib(void);
 
 struct tapenc_params {
   uint32_t min_duration;

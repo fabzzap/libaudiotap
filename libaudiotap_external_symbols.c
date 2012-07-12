@@ -463,3 +463,9 @@ struct audiotap_init_status audiotap_initialize2(void){
   return status;
 }
 
+void audiotap_terminate_lib(void)
+{
+  if (status.portaudio_init_status == LIBRARY_OK)
+    Pa_Terminate();
+}
+
