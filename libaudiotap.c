@@ -661,7 +661,7 @@ int audiotap_is_terminated(struct audiotap *audiotap){
 void audio2tap_close(struct audiotap *audiotap){
   if (audiotap){
     audiotap->audio2tap_functions->close(audiotap->priv);
-    free(audiotap->tapenc);
+    tapencoder_exit(audiotap->tapenc);
   }
   free(audiotap);
 }
@@ -971,6 +971,6 @@ enum audiotap_status tap2audio_set_pulse(struct audiotap *audiotap, uint32_t pul
 
 void tap2audio_close(struct audiotap *audiotap){
   audiotap->tap2audio_functions->close(audiotap->priv);
-  free(audiotap->tapdec);
+  tapdecoder_exit(audiotap->tapdec);
   free(audiotap);
 }

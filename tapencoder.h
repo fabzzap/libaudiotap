@@ -31,4 +31,4 @@ EXTERN uint32_t (*tapenc_get_pulse)(struct tap_enc_t *tap, int32_t *buffer, uint
 EXTERN uint32_t (*tapenc_flush)(struct tap_enc_t *tap);
 EXTERN int32_t (*tapenc_get_max)(struct tap_enc_t *tap);
 EXTERN void (*tapenc_invert)(struct tap_enc_t *tap);
-
+EXTERN void (*tapencoder_exit)(struct tap_enc_t *tap);

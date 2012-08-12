@@ -33,3 +33,4 @@ enum tapdec_waveform {
 EXTERN struct tap_dec_t *(*tapdecoder_init)(uint32_t volume, uint8_t inverted, uint8_t semiwaves, enum tapdec_waveform waveform);
 EXTERN void (*tapdec_set_pulse)(struct tap_dec_t *tap, uint32_t pulse);
 EXTERN uint32_t (*tapdec_get_buffer)(struct tap_dec_t *tap, int32_t *buffer, unsigned int buflen);
+EXTERN void (*tapdecoder_exit)(struct tap_dec_t *tap);

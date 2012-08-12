@@ -358,6 +358,15 @@ static enum library_status libtapencoder_init(){
   if (!tapencoder_init)
     return LIBRARY_SYMBOLS_MISSING;
 
+  tapencoder_exit = 
+#if defined(WIN32)
+  (void*)GetProcAddress(handle, "tapencoder_exit");
+#else
+  dlsym(handle, "tapencoder_exit");
+#endif
+  if (!tapencoder_exit)
+    return LIBRARY_SYMBOLS_MISSING;
+
   tapenc_get_pulse =
 #if defined(WIN32)
   (void*)GetProcAddress(handle, "tapenc_get_pulse");
@@ -430,6 +439,15 @@ static enum library_status libtapdecoder_init(){
   dlsym(handle, "tapdecoder_init");
 #endif
   if (!tapdecoder_init)
+    return LIBRARY_SYMBOLS_MISSING;
+
+  tapdecoder_exit = 
+#if defined(WIN32)
+  (void*)GetProcAddress(handle, "tapdecoder_exit");
+#else
+  dlsym(handle, "tapdecoder_exit");
+#endif
+  if (!tapdecoder_exit)
     return LIBRARY_SYMBOLS_MISSING;
 
   tapdec_set_pulse =
