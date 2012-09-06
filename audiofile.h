@@ -142,6 +142,7 @@ EXTERN int (*afCloseFile) (AFfilehandle file);
 EXTERN void (*afInitFileFormat) (AFfilesetup, int format);
 EXTERN int (*afReadFrames) (AFfilehandle, int track, void *buffer, int frameCount);
 EXTERN int (*afWriteFrames) (AFfilehandle, int track, const void *buffer, int frameCount);
+EXTERN AFframecount (*afSeekFrame) (AFfilehandle, int track, AFframecount frameoffset);
 EXTERN AFfileoffset (*afTellFrame) (AFfilehandle, int track);
 EXTERN float (*afGetFrameSize) (AFfilehandle file, int track, int expand3to4);
 EXTERN float (*afGetVirtualFrameSize) (AFfilehandle, int track, int expand3to4);

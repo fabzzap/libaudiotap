@@ -10,7 +10,7 @@
  * Audiotap shared library can work without audiofile or without pablio, but
  * it is useless without both.
  *
- * Copyright (c) Fabrizio Gennari, 1998-2003
+ * Copyright (c) Fabrizio Gennari, 2003-2012
  *
  * The program is distributed under the GNU Lesser General Public License.
  * See file LESSER-LICENSE.TXT for details.
@@ -79,12 +79,11 @@ enum audiotap_status audio2tap_open_from_file3(struct audiotap **audiotap,
                                               uint8_t *videotype,
                                               uint8_t *halfwaves);
 
-enum audiotap_status audio2tap_from_soundcard3(struct audiotap **audiotap,
+enum audiotap_status audio2tap_from_soundcard4(struct audiotap **audiotap,
                                               uint32_t freq,
                                               struct tapenc_params *params,
                                               uint8_t machine,
-                                              uint8_t videotype,
-                                              uint8_t halfwaves);
+                                              uint8_t videotype);
 
 enum audiotap_status audio2tap_get_pulses(struct audiotap *audiotap, uint32_t *pulse, uint32_t *raw_pulse);
 
@@ -97,6 +96,8 @@ int audio2tap_is_eof(struct audiotap *audiotap);
 int32_t audio2tap_get_current_sound_level(struct audiotap *audiotap);
 
 void audio2tap_invert(struct audiotap *audiotap);
+int audio2tap_seek_to_beginning(struct audiotap *audiotap);
+void audio2tap_enable_disable_halfwaves(struct audiotap *audiotap, int halfwaves);
 
 void audiotap_terminate(struct audiotap *audiotap);
 int audiotap_is_terminated(struct audiotap *audiotap);
@@ -108,7 +109,6 @@ void audio2tap_close(struct audiotap *audiotap);
 struct tapdec_params {
   uint8_t volume;
   uint8_t inverted;
-  uint8_t halfwaves;
   enum {
     AUDIOTAP_WAVE_TRIANGLE,
     AUDIOTAP_WAVE_SQUARE,
@@ -116,24 +116,26 @@ struct tapdec_params {
   } waveform;
 };
 
-enum audiotap_status tap2audio_open_to_soundcard3(struct audiotap **audiotap
+enum audiotap_status tap2audio_open_to_soundcard4(struct audiotap **audiotap
                                                 ,struct tapdec_params *params
                                                 ,uint32_t freq
                                                 ,uint8_t machine
                                                 ,uint8_t videotype);
 
-enum audiotap_status tap2audio_open_to_wavfile3(struct audiotap **audiotap
+enum audiotap_status tap2audio_open_to_wavfile4(struct audiotap **audiotap
                                               ,const char *file
                                               ,struct tapdec_params *params
                                               ,uint32_t freq
                                               ,uint8_t machine
                                               ,uint8_t videotype);
 
-enum audiotap_status tap2audio_open_to_tapfile2(struct audiotap **audiotap
+enum audiotap_status tap2audio_open_to_tapfile3(struct audiotap **audiotap
                                               ,const char *name
                                               ,uint8_t version
                                               ,uint8_t machine
                                               ,uint8_t videotype);
+
+void tap2audio_enable_halfwaves(struct audiotap *audiotap, uint8_t halfwaves);
 
 enum audiotap_status tap2audio_set_pulse(struct audiotap *audiotap, uint32_t pulse);
 

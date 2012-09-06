@@ -1,3 +1,15 @@
+/* Audiotap shared library: a higher-level interface to TAP shared library
+ *
+ * libaudiotap_external_symbols.c: load optional libraries, and relative symbols.
+ * This allows Audiotap tp work even when the needed libraries are not there,
+ * at least as a TAP reader/writer.
+ *
+ * Copyright (c) Fabrizio Gennari, 2012
+ *
+ * The program is distributed under the GNU Lesser General Public License.
+ * See file LESSER-LICENSE.TXT for details.
+ */
+
 #define AUDIOFILE_DECLARE_HERE
 #include "audiofile.h"
 #define PORTAUDIO_DECLARE_HERE
@@ -93,6 +105,15 @@ static const char* audiofile_library_name =
   afWriteFrames = dlsym(handle, "afWriteFrames");
 #endif
   if (!afWriteFrames) {
+    return LIBRARY_SYMBOLS_MISSING;
+  }
+
+#if defined(WIN32)
+  afSeekFrame = (void*)GetProcAddress(handle, "afSeekFrame");
+#else
+  afSeekFrame = dlsym(handle, "afSeekFrame");
+#endif
+  if (!afSeekFrame) {
     return LIBRARY_SYMBOLS_MISSING;
   }
 
@@ -349,22 +370,22 @@ static enum library_status libtapencoder_init(){
   if (!handle)
     return LIBRARY_MISSING;
 
-  tapencoder_init = 
+  tapenc_init2 = 
 #if defined(WIN32)
-  (void*)GetProcAddress(handle, "tapencoder_init");
+  (void*)GetProcAddress(handle, "tapenc_init2");
 #else
-  dlsym(handle, "tapencoder_init");
+  dlsym(handle, "tapenc_init2");
 #endif
-  if (!tapencoder_init)
+  if (!tapenc_init2)
     return LIBRARY_SYMBOLS_MISSING;
 
-  tapencoder_exit = 
+  tapenc_exit = 
 #if defined(WIN32)
-  (void*)GetProcAddress(handle, "tapencoder_exit");
+  (void*)GetProcAddress(handle, "tapenc_exit");
 #else
-  dlsym(handle, "tapencoder_exit");
+  dlsym(handle, "tapenc_exit");
 #endif
-  if (!tapencoder_exit)
+  if (!tapenc_exit)
     return LIBRARY_SYMBOLS_MISSING;
 
   tapenc_get_pulse =
@@ -403,6 +424,15 @@ static enum library_status libtapencoder_init(){
    if (!tapenc_invert)
      return LIBRARY_SYMBOLS_MISSING;
 
+  tapenc_toggle_trigger_on_both_edges =
+#if defined(WIN32)
+   (void*)GetProcAddress(handle, "tapenc_toggle_trigger_on_both_edges");
+#else
+   dlsym(handle, "tapenc_toggle_trigger_on_both_edges");
+#endif
+   if (!tapenc_toggle_trigger_on_both_edges)
+     return LIBRARY_SYMBOLS_MISSING;
+
   return LIBRARY_OK;
 }
 
@@ -432,22 +462,22 @@ static enum library_status libtapdecoder_init(){
   if (!handle)
     return LIBRARY_MISSING;
 
-  tapdecoder_init = 
+  tapdec_init2 = 
 #if defined(WIN32)
-  (void*)GetProcAddress(handle, "tapdecoder_init");
+  (void*)GetProcAddress(handle, "tapdec_init2");
 #else
-  dlsym(handle, "tapdecoder_init");
+  dlsym(handle, "tapdec_init2");
 #endif
-  if (!tapdecoder_init)
+  if (!tapdec_init2)
     return LIBRARY_SYMBOLS_MISSING;
 
-  tapdecoder_exit = 
+  tapdec_exit = 
 #if defined(WIN32)
-  (void*)GetProcAddress(handle, "tapdecoder_exit");
+  (void*)GetProcAddress(handle, "tapdec_exit");
 #else
-  dlsym(handle, "tapdecoder_exit");
+  dlsym(handle, "tapdec_exit");
 #endif
-  if (!tapdecoder_exit)
+  if (!tapdec_exit)
     return LIBRARY_SYMBOLS_MISSING;
 
   tapdec_set_pulse =
@@ -467,6 +497,15 @@ static enum library_status libtapdecoder_init(){
   dlsym(handle, "tapdec_get_buffer");
 #endif
   if (!tapdec_get_buffer)
+    return LIBRARY_SYMBOLS_MISSING;
+
+  tapdec_enable_halfwaves =
+#if defined(WIN32)
+  (void*)GetProcAddress(handle, "tapdec_enable_halfwaves");
+#else
+  dlsym(handle, "tapdec_enable_halfwaves");
+#endif
+  if (!tapdec_enable_halfwaves)
     return LIBRARY_SYMBOLS_MISSING;
 
   return LIBRARY_OK;

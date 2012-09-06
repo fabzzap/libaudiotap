@@ -8,7 +8,7 @@
  * Kujala, based on the one written by Andreas Matthies for Tape64.
  * Some modifications and adaptation to library format by Fabrizio Gennari
  *
- * Copyright (c) Fabrizio Gennari, 2003-2011
+ * Copyright (c) Fabrizio Gennari, 2003-2012
  *
  * The program is distributed under the GNU Lesser General Public License.
  * See file LESSER-LICENSE.TXT for details.
@@ -26,9 +26,10 @@
 
 struct tap_enc_t;
 
-EXTERN struct tap_enc_t *(*tapencoder_init)(uint32_t min_duration, uint8_t sensitivity, uint8_t initial_threshold, uint8_t inverted, uint8_t semiwaves);
-EXTERN uint32_t (*tapenc_get_pulse)(struct tap_enc_t *tap, int32_t *buffer, uint32_t buflen, uint32_t *pulse);
-EXTERN uint32_t (*tapenc_flush)(struct tap_enc_t *tap);
-EXTERN int32_t (*tapenc_get_max)(struct tap_enc_t *tap);
-EXTERN void (*tapenc_invert)(struct tap_enc_t *tap);
-EXTERN void (*tapencoder_exit)(struct tap_enc_t *tap);
+struct tap_enc_t *(*tapenc_init2)(uint32_t min_duration, uint8_t sensitivity, uint8_t initial_threshold, uint8_t inverted);
+uint32_t (*tapenc_get_pulse)(struct tap_enc_t *tap, int32_t *buffer, uint32_t buflen, uint32_t *pulse);
+uint32_t (*tapenc_flush)(struct tap_enc_t *tap);
+int32_t (*tapenc_get_max)(struct tap_enc_t *tap);
+void (*tapenc_invert)(struct tap_enc_t *tap);
+void (*tapenc_toggle_trigger_on_both_edges)(struct tap_enc_t *tap, uint8_t both_edges);
+void (*tapenc_exit)(struct tap_enc_t *tap);
