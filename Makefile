@@ -11,8 +11,6 @@ libaudiotap.so: libaudiotap.o libaudiotap_external_symbols.o
 
 LIBTAP_DIR=../libtap
 
-CFLAGS+=-I$(LIBTAP_DIR)
-
 ifdef DEBUG
  CFLAGS+=-g
 endif
