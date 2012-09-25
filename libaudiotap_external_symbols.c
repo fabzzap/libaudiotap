@@ -52,9 +52,9 @@ static const char* audiofile_library_name =
 #endif //_MSC_VER,DEBUG
 #elif (defined _WIN32 || defined __CYGWIN__)
 #ifdef AUDIOFILE_COMPILED_WITH_CYGWIN_SHELL
-"cygaudiofile-0.dll"
+"cygaudiofile-1.dll"
 #else //not AUDIOFILE_COMPILED_WITH_CYGWIN_SHELL
-"libaudiofile-0.dll"
+"libaudiofile-1.dll"
 #endif //_WIN32 or __CYGWIN__,AUDIOFILE_COMPILED_WITH_CYGWIN_SHELL
 #elif defined __APPLE__
 "libaudiofile.0.0.2.dylib"

@@ -728,7 +728,8 @@ int audiotap_is_terminated(struct audiotap *audiotap){
 void audio2tap_close(struct audiotap *audiotap){
   if (audiotap){
     audiotap->audio2tap_functions->close(audiotap->priv);
-    tapenc_exit(audiotap->tapenc);
+    if (status.tapencoder_init_status == LIBRARY_OK)
+      tapenc_exit(audiotap->tapenc);
   }
   free(audiotap);
 }
@@ -1071,6 +1072,7 @@ void tap2audio_enable_halfwaves(struct audiotap *audiotap, uint8_t halfwaves)
 
 void tap2audio_close(struct audiotap *audiotap){
   audiotap->tap2audio_functions->close(audiotap->priv);
-  tapdec_exit(audiotap->tapdec);
+  if (status.tapdecoder_init_status == LIBRARY_OK)
+    tapdec_exit(audiotap->tapdec);
   free(audiotap);
 }
