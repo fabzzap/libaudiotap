@@ -1,7 +1,7 @@
 all:audiotap.dll
 
 %.dll: lib%.o lib%_external_symbols.o %.def
-	$(CC) -shared -Wl,--out-implib=audiotap.lib -o $@ $^ $(LDFLAGS)
+	$(CC) -shared -Wl,--out-implib=libaudiotap.a -o $@ $^ $(LDFLAGS)
 
 clean:
 	rm -f *.o *.dll *.lib *~ *.so
