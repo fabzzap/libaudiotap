@@ -20,7 +20,7 @@ BEGIN
             VALUE "CompanyName", "Fabrizio Gennari"
             VALUE "FileDescription", "Reads and writes Commodore tape files"
             VALUE "FileVersion", "2.0.0.0"
-            VALUE "InternalName", "TODO: <Internal name>"
+            VALUE "InternalName", "audiotap"
             VALUE "LegalCopyright", "Copyright (C) 2003-2012 Fabrizio Gennari"
             VALUE "OriginalFilename", "audiotap.dll"
             VALUE "ProductName", "Audiotap"
