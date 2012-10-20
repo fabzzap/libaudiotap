@@ -1,6 +1,10 @@
 all:audiotap.dll
 
-%.dll: lib%.o lib%_external_symbols.o %.def
+ifdef WITH_VERSION
+  RESOURCE_OBJECT=lib%-resource.o
+endif
+
+%.dll: lib%.o lib%_external_symbols.o %.def $(RESOURCE_OBJECT)
 	$(CC) -shared -Wl,--out-implib=libaudiotap.a -o $@ $^ $(LDFLAGS)
 
 clean:
@@ -9,10 +13,12 @@ clean:
 libaudiotap.so: libaudiotap.o libaudiotap_external_symbols.o
 	$(CC) -shared -o $@ $^ -ldl $(LDFLAGS)
 
-LIBTAP_DIR=../libtap
-
 ifdef DEBUG
  CFLAGS+=-g
+endif
+
+ifdef OPTIMISE
+ CFLAGS+=-O3
 endif
 
 ifdef LINUX64BIT
@@ -20,6 +26,11 @@ ifdef LINUX64BIT
 endif
 
 ifdef USE_RPATH
- LDFLAGS=-Wl,-rpath=$(LIBTAP_DIR)
+ LDFLAGS=-Wl,-rpath=$(USE_RPATH)
 endif
+
+WINDRES=windres
+
+%-resource.o: %-resource.rc
+	$(WINDRES) -o $@ $^
 
