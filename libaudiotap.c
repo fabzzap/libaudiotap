@@ -583,6 +583,100 @@ static enum audiotap_status dmpfile_init(struct audiotap **audiotap,
   return err;
 }
 
+static enum audiotap_status cswfile_get_pulse(struct audiotap *audiotap, uint32_t *pulse, uint32_t *raw_pulse){
+  struct tap_read_handle *handle = (struct tap_read_handle *)audiotap->priv;
+  uint8_t byte, fourbytes[4];
+
+  if (fread(&byte, 1, 1, handle->file) != 1)
+    return AUDIOTAP_EOF;
+  if (byte != 0)
+    *pulse = byte;
+  else {
+    if (fread(fourbytes, 4, 1, handle->file) != 1)
+      return AUDIOTAP_EOF;
+    *pulse = fourbytes[0]
+          + (fourbytes[1]<< 8)
+          + (fourbytes[2]<<16)
+          + (fourbytes[3]<<24);
+  }
+  *raw_pulse = *pulse;
+  *pulse = (uint32_t)(*pulse * audiotap->factor + 1);
+  return AUDIOTAP_OK;
+}
+
+static enum audiotap_status cswfile_init(struct audiotap **audiotap,
+                                         const char *file,
+                                         uint8_t *machine,
+                                         uint8_t *videotype,
+                                         uint8_t *halfwaves){
+  uint32_t freq;
+  uint8_t version_major,version_minor,compression_type,flags;
+  uint8_t freq_on_file[4] = {0,0,0,0};
+  uint8_t file_size[4];
+  uint8_t discarded[17];
+  const char csw_file_header[] = {'C','o','m','p','r','e','s','s','e','d',' ','S','q','u','a','r','e',' ','W','a','v','e',0x1a};
+  struct tap_read_handle *handle = (struct tap_read_handle *)malloc(sizeof(struct tap_read_handle));
+  enum audiotap_status err;
+
+  if (handle == NULL)
+    return AUDIOTAP_NO_MEMORY;
+
+  do {
+    char file_header[sizeof(csw_file_header)];
+    handle->file = fopen(file, "rb");
+    if (handle->file == NULL){
+      err = errno == ENOENT ? AUDIOTAP_NO_FILE : AUDIOTAP_LIBRARY_ERROR;
+      break;
+    }
+    err = AUDIOTAP_LIBRARY_ERROR;
+    if (fread(file_header, sizeof(file_header), 1, handle->file) < 1)
+      break;
+    err = AUDIOTAP_WRONG_FILETYPE;
+    if (memcmp(csw_file_header, file_header, sizeof(file_header)))
+      break;
+    if (fread(&version_major, 1, 1, handle->file) < 1)
+      break;
+    if (fread(&version_minor, 1, 1, handle->file) < 1)
+      break;
+    if ((version_major != 2 || version_minor != 0)
+     && (version_major != 1 || (version_minor != 0 && version_minor != 1)))
+      break;
+    if (fread(freq_on_file, version_major == 2 ? 4 : 2, 1, handle->file) < 1)
+      break;
+    if (version_major == 2 && version_minor == 0
+     && fread(file_size, 4, 1, handle->file) < 1)
+      break;
+    if (fread(&compression_type, 1, 1, handle->file) < 1)
+      break;
+    if (compression_type != 1)
+      break;
+    if (fread(&flags, 1, 1, handle->file) < 1)
+      break;
+    if (fread(discarded, version_major == 2 ? 17 : 3, 1, handle->file) < 1)
+      break;
+    freq = freq_on_file[0]
+        + (freq_on_file[1]<< 8)
+        + (freq_on_file[2]<<16)
+        + (freq_on_file[3]<<24);
+    handle->wave_mode = (flags&1) ? reading_both_halfwaves : reading_single_halfwave_one_shot;
+    handle->get_wave = cswfile_get_pulse;
+    *halfwaves = 1;
+    err = AUDIOTAP_OK;
+  }while (0);
+  if (err == AUDIOTAP_OK)
+    return audio2tap_open_common(audiotap,
+                                 NULL,
+                                 freq,
+                                 *machine,
+                                 *videotype,
+                                 &tapfile_read_functions,
+                                 handle);
+  if (handle->file != NULL)
+    fclose(handle->file);
+  free(handle);
+  return err;
+}
+
 enum audiotap_status audio2tap_open_from_file3(struct audiotap **audiotap,
                                               const char *file,
                                               struct tapenc_params *params,
@@ -599,6 +693,11 @@ enum audiotap_status audio2tap_open_from_file3(struct audiotap **audiotap,
   if (error != AUDIOTAP_WRONG_FILETYPE)
     return error;
   error = dmpfile_init(audiotap, file, machine, videotype, halfwaves);
+  if (error == AUDIOTAP_OK)
+    return AUDIOTAP_OK;
+  if (error != AUDIOTAP_WRONG_FILETYPE)
+    return error;
+  error = cswfile_init(audiotap, file, machine, videotype, halfwaves);
   if (error == AUDIOTAP_OK)
     return AUDIOTAP_OK;
   if (error != AUDIOTAP_WRONG_FILETYPE)
