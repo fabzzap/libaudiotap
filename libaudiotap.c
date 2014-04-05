@@ -428,6 +428,7 @@ static int audiofile_seek_to_beginning(struct audiotap *audiotap)
   audiotap->has_flushed = 0;
   audiotap->accumulated_samples = 0;
   audiotap->bufroom = 0;
+  tapenc_flush(audiotap->tapenc);
   return afSeekFrame((AFfilehandle)audiotap->priv, AF_DEFAULT_TRACK, 0) == 0;
 }
 
