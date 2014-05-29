@@ -18,13 +18,28 @@
 #define EXTERN
 #endif
 
+#include <stdint.h>
 #include <sys/types.h>
 
 typedef struct _AFfilesetup *AFfilesetup;
 typedef struct _AFfilehandle *AFfilehandle;
 
+#if defined(__FreeBSD__) || \
+	defined(__DragonFly__) || \
+	defined(__NetBSD__) || \
+	defined(__OpenBSD__) || \
+	defined(__APPLE__) || \
+	defined(__sgi) || \
+	(defined(__linux__) && defined(__LP64__))
+// BSD and IRIX systems define off_t as a 64-bit signed integer.
+// Linux defines off_t as a 64-bit signed integer in LP64 mode.
 typedef off_t AFframecount;
 typedef off_t AFfileoffset;
+#else
+// For all other systems, use int64_t.
+typedef int64_t AFframecount;
+typedef int64_t AFfileoffset;
+#endif
 
 #define AF_NULL_FILESETUP       ((struct _AFfilesetup *) 0)
 #define AF_NULL_FILEHANDLE      ((struct _AFfilehandle *) 0)
