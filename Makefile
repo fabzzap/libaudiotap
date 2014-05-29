@@ -5,7 +5,7 @@ ifdef WITH_VERSION
 endif
 
 %.dll: lib%.o lib%_external_symbols.o %.def $(RESOURCE_OBJECT)
-	$(CC) -shared -Wl,--out-implib=libaudiotap.a -o $@ $^ $(LDFLAGS)
+	$(CC) -shared -static-libgcc -Wl,--out-implib=libaudiotap.a -o $@ $^ $(LDFLAGS)
 
 clean:
 	rm -f *.o *.dll *.lib *~ *.so
