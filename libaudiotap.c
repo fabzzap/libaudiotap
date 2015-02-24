@@ -1081,7 +1081,10 @@ enum audiotap_status tap2audio_open_to_wavfile4(struct audiotap **audiotap
   afInitChannels(setup, AF_DEFAULT_TRACK, 1);
   afInitFileFormat(setup, AF_FILE_WAVE);
   afInitSampleFormat(setup, AF_DEFAULT_TRACK, AF_SAMPFMT_UNSIGNED, 8);
-  fh=afOpenFile(file,"w", setup);
+  if (file)
+    fh=afOpenFile(file,"w", setup);
+  else
+    fh=afOpenFD(STDOUT_FILENO,"w", setup);
   afFreeFileSetup(setup);
   if (fh == AF_NULL_FILEHANDLE)
     return AUDIOTAP_LIBRARY_ERROR;

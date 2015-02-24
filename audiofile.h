@@ -153,6 +153,7 @@ EXTERN void (*afFreeFileSetup) (AFfilesetup);
 
 EXTERN AFfilehandle (*afOpenFile) (const char *filename, const char *mode,
   AFfilesetup setup);
+EXTERN AFfilehandle (*afOpenFD) (int fd, const char *mode, AFfilesetup setup);
 EXTERN int (*afCloseFile) (AFfilehandle file);
 EXTERN void (*afInitFileFormat) (AFfilesetup, int format);
 EXTERN int (*afReadFrames) (AFfilehandle, int track, void *buffer, int frameCount);

@@ -85,6 +85,7 @@ static const char* audiofile_library_name =
   }
 
   LOAD(afOpenFile)
+  LOAD(afOpenFD)
   LOAD(afCloseFile)
   LOAD(afReadFrames)
   LOAD(afWriteFrames)
