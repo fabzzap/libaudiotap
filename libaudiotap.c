@@ -169,6 +169,7 @@ static enum audiotap_status audio2tap_audio_open_common(struct audiotap **audiot
     audio2tap_functions->close(priv);
     return error;
   }
+  tapenc_set_silence_threshold(tapenc, 1, freq/10000);
   return audio2tap_open_common(audiotap, tapenc, freq, machine, videotype, audio2tap_functions, priv);
 }
 

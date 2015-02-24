@@ -32,4 +32,7 @@ uint32_t (*tapenc_flush)(struct tap_enc_t *tap);
 int32_t (*tapenc_get_max)(struct tap_enc_t *tap);
 void (*tapenc_invert)(struct tap_enc_t *tap);
 void (*tapenc_toggle_trigger_on_both_edges)(struct tap_enc_t *tap, uint8_t both_edges);
+void (*tapenc_set_silence_threshold)(struct tap_enc_t *tap,
+                                  uint8_t silence_threshold,
+                                  uint32_t min_non_silence_duration);
 void (*tapenc_exit)(struct tap_enc_t *tap);

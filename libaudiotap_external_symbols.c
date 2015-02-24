@@ -183,6 +183,7 @@ static enum library_status libtapencoder_init(){
   LOAD(tapenc_get_max)
   LOAD(tapenc_invert)
   LOAD(tapenc_toggle_trigger_on_both_edges)
+  LOAD(tapenc_set_silence_threshold)
 
   return LIBRARY_OK;
 }
