@@ -46,7 +46,7 @@ static enum library_status audiofile_init(){
 #if defined(WIN32)
 #define LOAD_FROM_LIBRARY(x,y) (void*)GetProcAddress(x,y)
 #else
-#define LOAD_FROM_LIBRARY(x,y) dlopen(x,y)
+#define LOAD_FROM_LIBRARY(x,y) dlsym(x,y)
 #endif
 
 #define LOAD(x) \

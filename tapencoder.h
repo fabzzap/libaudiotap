@@ -26,13 +26,13 @@
 
 struct tap_enc_t;
 
-struct tap_enc_t *(*tapenc_init2)(uint32_t min_duration, uint8_t sensitivity, uint8_t initial_threshold, uint8_t inverted);
-uint32_t (*tapenc_get_pulse)(struct tap_enc_t *tap, int32_t *buffer, uint32_t buflen, uint32_t *pulse);
-uint32_t (*tapenc_flush)(struct tap_enc_t *tap);
-int32_t (*tapenc_get_max)(struct tap_enc_t *tap);
-void (*tapenc_invert)(struct tap_enc_t *tap);
-void (*tapenc_toggle_trigger_on_both_edges)(struct tap_enc_t *tap, uint8_t both_edges);
-void (*tapenc_set_silence_threshold)(struct tap_enc_t *tap,
+EXTERN struct tap_enc_t *(*tapenc_init2)(uint32_t min_duration, uint8_t sensitivity, uint8_t initial_threshold, uint8_t inverted);
+EXTERN uint32_t (*tapenc_get_pulse)(struct tap_enc_t *tap, int32_t *buffer, uint32_t buflen, uint32_t *pulse);
+EXTERN uint32_t (*tapenc_flush)(struct tap_enc_t *tap);
+EXTERN int32_t (*tapenc_get_max)(struct tap_enc_t *tap);
+EXTERN void (*tapenc_invert)(struct tap_enc_t *tap);
+EXTERN void (*tapenc_toggle_trigger_on_both_edges)(struct tap_enc_t *tap, uint8_t both_edges);
+EXTERN void (*tapenc_set_silence_threshold)(struct tap_enc_t *tap,
                                   uint8_t silence_threshold,
                                   uint32_t min_non_silence_duration);
 void (*tapenc_exit)(struct tap_enc_t *tap);
