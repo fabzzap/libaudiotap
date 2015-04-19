@@ -23,6 +23,9 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#ifdef WIN32
+#include <Windows.h>
+#endif
 #include "audiofile.h"
 #include "portaudio.h"
 #include "tapencoder.h"
@@ -46,6 +49,8 @@ struct tap2audio_functions {
   uint32_t            (*get_buffer)(struct audiotap *audiotap);
   enum audiotap_status(*dump_buffer)(uint8_t *buffer, uint32_t bufroom, void *priv);
   void                (*enable_halfwaves)(struct audiotap *audiotap, uint8_t halfwaves);
+  void                (*pause)(void *priv);
+  void                (*resume)(void *priv);
   void                (*close)(void *priv);
 };
 
@@ -93,6 +98,9 @@ struct audiotap {
   const struct tap2audio_functions *tap2audio_functions;
   const struct audio2tap_functions *audio2tap_functions;
   void *priv;
+#ifdef WIN32
+  HANDLE wait_event;
+#endif
 };
 
 extern struct audiotap_init_status status;
@@ -950,11 +958,16 @@ static void tapfile_enable_halfwaves(struct audiotap *audiotap, uint8_t halfwave
     handle->split_into_halfwaves = !halfwaves;
 }
 
+static void tap2audio_file_pause(void *priv){}
+static void tap2audio_file_resume(void *priv){}
+
 static const struct tap2audio_functions tapfile_write_functions = {
   tapfile_set_pulse,
   tapfile_get_buffer,
   tapfile_dump_buffer,
   tapfile_enable_halfwaves,
+  tap2audio_file_pause,
+  tap2audio_file_resume,
   tapfile_write_close,
 };
 
@@ -979,6 +992,8 @@ static const struct tap2audio_functions audiofile_write_functions = {
   audio_get_buffer,
   audiofile_dump_buffer,
   audio_enable_halfwaves,
+  tap2audio_file_pause,
+  tap2audio_file_resume,
   audiofile_close,
 };
 
@@ -986,11 +1001,21 @@ static enum audiotap_status portaudio_dump_buffer(uint8_t *buffer, uint32_t bufs
   return Pa_WriteStream((PaStream*)priv, buffer, bufsize) == paNoError ? AUDIOTAP_OK : AUDIOTAP_LIBRARY_ERROR;
 }
 
+static void portaudio_pause(void *priv){
+  Pa_StopStream((PaStream*)priv);
+}
+
+static void portaudio_resume(void *priv){
+  Pa_StartStream((PaStream*)priv);
+}
+
 static const struct tap2audio_functions portaudio_write_functions = {
   audio_set_pulse,
   audio_get_buffer,
   portaudio_dump_buffer,
   audio_enable_halfwaves,
+  portaudio_pause,
+  portaudio_resume,
   portaudio_close,
 };
 
@@ -1025,6 +1050,9 @@ static enum audiotap_status tap2audio_open_common(struct audiotap **audiotap
           )
           error = AUDIOTAP_OK;
       }
+#ifdef WIN32
+      obj->wait_event = CreateEvent(NULL, TRUE, TRUE, NULL);
+#endif
     }
   }
 
@@ -1156,6 +1184,21 @@ enum audiotap_status tap2audio_open_to_tapfile3(struct audiotap **audiotap
                               ,handle);
 }
 
+static char tap2audio_should_pause(struct audiotap *audiotap){
+#ifdef WIN32
+  return WaitForSingleObject(audiotap->wait_event, 0) == WAIT_TIMEOUT;
+#endif
+  return 0;
+}
+
+static void tap2audio_actually_pause(struct audiotap *audiotap){
+  audiotap->tap2audio_functions->pause(audiotap->priv);
+#ifdef WIN32
+  WaitForSingleObject(audiotap->wait_event, INFINITE);
+#endif
+  audiotap->tap2audio_functions->resume(audiotap->priv);
+}
+
 enum audiotap_status tap2audio_set_pulse(struct audiotap *audiotap, uint32_t pulse){
   uint32_t numframes;
   enum audiotap_status error = AUDIOTAP_OK;
@@ -1163,11 +1206,25 @@ enum audiotap_status tap2audio_set_pulse(struct audiotap *audiotap, uint32_t pul
   audiotap->tap2audio_functions->set_pulse(audiotap, pulse);
 
   while(error == AUDIOTAP_OK && (numframes = audiotap->tap2audio_functions->get_buffer(audiotap)) > 0){
+    if (tap2audio_should_pause(audiotap))
+      tap2audio_actually_pause(audiotap);
     error = audiotap->terminated ? AUDIOTAP_INTERRUPTED :
     audiotap->tap2audio_functions->dump_buffer(audiotap->bufstart, numframes, audiotap->priv);
   }
 
   return error;
+}
+
+void tap2audio_pause(struct audiotap *audiotap) {
+#ifdef WIN32
+  ResetEvent(audiotap->wait_event);
+#endif
+}
+
+void tap2audio_resume(struct audiotap *audiotap) {
+#ifdef WIN32
+  SetEvent(audiotap->wait_event);
+#endif
 }
 
 void tap2audio_enable_halfwaves(struct audiotap *audiotap, uint8_t halfwaves)

@@ -138,6 +138,9 @@ enum audiotap_status tap2audio_open_to_tapfile3(struct audiotap **audiotap
 void tap2audio_enable_halfwaves(struct audiotap *audiotap, uint8_t halfwaves);
 
 enum audiotap_status tap2audio_set_pulse(struct audiotap *audiotap, uint32_t pulse);
+void tap2audio_pause(struct audiotap *audiotap);
+
+void tap2audio_resume(struct audiotap *audiotap);
 
 void tap2audio_close(struct audiotap *audiotap);
 
