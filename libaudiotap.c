@@ -20,11 +20,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #ifdef WIN32
 #include <Windows.h>
+#ifdef _MSC_VER
+#define STDIN_FILENO    0
+#define STDOUT_FILENO   1
+#define STDERR_FILENO   2
+#endif
+#else
+#include <unistd.h>
 #endif
 #include "audiofile.h"
 #include "portaudio.h"
