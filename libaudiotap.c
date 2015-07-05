@@ -22,13 +22,8 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#ifdef WIN32
-#include <Windows.h>
 #ifdef _MSC_VER
-#define STDIN_FILENO    0
 #define STDOUT_FILENO   1
-#define STDERR_FILENO   2
-#endif
 #else
 #include <unistd.h>
 #endif
@@ -37,6 +32,7 @@
 #include "tapencoder.h"
 #include "tapdecoder.h"
 #include "audiotap.h"
+#include "wait_event.h"
 
 struct audio2tap_functions {
   enum audiotap_status(*get_pulse)(struct audiotap *audiotap, uint32_t *pulse, uint32_t *raw_pulse);
@@ -103,10 +99,8 @@ struct audiotap {
   uint32_t accumulated_samples;
   const struct tap2audio_functions *tap2audio_functions;
   const struct audio2tap_functions *audio2tap_functions;
+  struct wait_event *wait_event;
   void *priv;
-#ifdef WIN32
-  HANDLE wait_event;
-#endif
 };
 
 extern struct audiotap_init_status status;
@@ -1056,9 +1050,8 @@ static enum audiotap_status tap2audio_open_common(struct audiotap **audiotap
           )
           error = AUDIOTAP_OK;
       }
-#ifdef WIN32
-      obj->wait_event = CreateEvent(NULL, TRUE, TRUE, NULL);
-#endif
+      obj->wait_event = malloc(size_of_wait_event());
+      create_wait_event(obj->wait_event);
     }
   }
 
@@ -1190,21 +1183,6 @@ enum audiotap_status tap2audio_open_to_tapfile3(struct audiotap **audiotap
                               ,handle);
 }
 
-static char tap2audio_should_pause(struct audiotap *audiotap){
-#ifdef WIN32
-  return WaitForSingleObject(audiotap->wait_event, 0) == WAIT_TIMEOUT;
-#endif
-  return 0;
-}
-
-static void tap2audio_actually_pause(struct audiotap *audiotap){
-  audiotap->tap2audio_functions->pause(audiotap->priv);
-#ifdef WIN32
-  WaitForSingleObject(audiotap->wait_event, INFINITE);
-#endif
-  audiotap->tap2audio_functions->resume(audiotap->priv);
-}
-
 enum audiotap_status tap2audio_set_pulse(struct audiotap *audiotap, uint32_t pulse){
   uint32_t numframes;
   enum audiotap_status error = AUDIOTAP_OK;
@@ -1212,8 +1190,7 @@ enum audiotap_status tap2audio_set_pulse(struct audiotap *audiotap, uint32_t pul
   audiotap->tap2audio_functions->set_pulse(audiotap, pulse);
 
   while(error == AUDIOTAP_OK && (numframes = audiotap->tap2audio_functions->get_buffer(audiotap)) > 0){
-    if (tap2audio_should_pause(audiotap))
-      tap2audio_actually_pause(audiotap);
+    pause_if_necessary(audiotap->wait_event);
     error = audiotap->terminated ? AUDIOTAP_INTERRUPTED :
     audiotap->tap2audio_functions->dump_buffer(audiotap->bufstart, numframes, audiotap->priv);
   }
@@ -1222,15 +1199,13 @@ enum audiotap_status tap2audio_set_pulse(struct audiotap *audiotap, uint32_t pul
 }
 
 void tap2audio_pause(struct audiotap *audiotap) {
-#ifdef WIN32
-  ResetEvent(audiotap->wait_event);
-#endif
+  audiotap->tap2audio_functions->pause(audiotap->priv);
+  set_pause(audiotap->wait_event);
 }
 
 void tap2audio_resume(struct audiotap *audiotap) {
-#ifdef WIN32
-  SetEvent(audiotap->wait_event);
-#endif
+  resume_from_pause(audiotap->wait_event);
+  audiotap->tap2audio_functions->resume(audiotap->priv);
 }
 
 void tap2audio_enable_halfwaves(struct audiotap *audiotap, uint8_t halfwaves)
@@ -1242,5 +1217,7 @@ void tap2audio_close(struct audiotap *audiotap){
   audiotap->tap2audio_functions->close(audiotap->priv);
   if (status.tapdecoder_init_status == LIBRARY_OK)
     tapdec_exit(audiotap->tapdec);
+  destroy_wait_event(audiotap->wait_event);
+  free(audiotap->wait_event);
   free(audiotap);
 }

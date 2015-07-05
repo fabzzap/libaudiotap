@@ -10,7 +10,7 @@ endif
 clean:
 	rm -f *.o *.dll *.lib *~ *.so
 
-libaudiotap.so: libaudiotap.o libaudiotap_external_symbols.o
+libaudiotap.so: libaudiotap.o libaudiotap_external_symbols.o pthread_wait_event.o
 	$(CC) -shared -o $@ $^ -ldl $(LDFLAGS)
 
 ifdef DEBUG
