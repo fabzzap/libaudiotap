@@ -1199,13 +1199,13 @@ enum audiotap_status tap2audio_set_pulse(struct audiotap *audiotap, uint32_t pul
 }
 
 void tap2audio_pause(struct audiotap *audiotap) {
-  audiotap->tap2audio_functions->pause(audiotap->priv);
   set_pause(audiotap->wait_event);
+  audiotap->tap2audio_functions->pause(audiotap->priv);
 }
 
 void tap2audio_resume(struct audiotap *audiotap) {
-  resume_from_pause(audiotap->wait_event);
   audiotap->tap2audio_functions->resume(audiotap->priv);
+  resume_from_pause(audiotap->wait_event);
 }
 
 void tap2audio_enable_halfwaves(struct audiotap *audiotap, uint8_t halfwaves)

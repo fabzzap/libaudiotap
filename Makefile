@@ -4,7 +4,7 @@ ifdef WITH_VERSION
   RESOURCE_OBJECT=lib%-resource.o
 endif
 
-%.dll: lib%.o lib%_external_symbols.o %.def $(RESOURCE_OBJECT)
+%.dll: lib%.o lib%_external_symbols.o windows_wait_event.o %.def $(RESOURCE_OBJECT)
 	$(CC) -shared -static-libgcc -Wl,--out-implib=libaudiotap.a -o $@ $^ $(LDFLAGS)
 
 clean:
