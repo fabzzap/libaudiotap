@@ -1,8 +1,7 @@
 #include <windows.h>
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2,0,0,9
- PRODUCTVERSION 2,0,0,9
+ FILEVERSION 2,2,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -19,12 +18,11 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Fabrizio Gennari"
             VALUE "FileDescription", "Reads and writes Commodore tape files"
-            VALUE "FileVersion", "2.0.0.0"
             VALUE "InternalName", "audiotap"
             VALUE "LegalCopyright", "Copyright (C) 2003-2014 Fabrizio Gennari"
             VALUE "OriginalFilename", "audiotap.dll"
             VALUE "ProductName", "Audiotap"
-            VALUE "ProductVersion", "2.0.0.0"
+            VALUE "ProductVersion", "2,2,0,0"
         END
     END
     BLOCK "VarFileInfo"
