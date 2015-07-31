@@ -288,7 +288,8 @@ static void tapfile_enable_disable_halfwaves(struct audiotap *audiotap, int half
 {
   struct tap_read_handle *handle = (struct tap_read_handle *)audiotap->priv;
 
-  if (halfwaves && (handle->wave_mode == reading_both_halfwaves || reading_single_halfwave_one_shot))
+  if (halfwaves && (handle->wave_mode == reading_both_halfwaves ||
+                    handle->wave_mode == reading_single_halfwave_one_shot))
     handle->wave_mode = reading_single_halfwave;
   else if (!halfwaves && (handle->wave_mode == reading_single_halfwave))
     handle->wave_mode = reading_both_halfwaves;
