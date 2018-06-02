@@ -71,7 +71,7 @@ static const char* audiofile_library_name =
 #elif defined __APPLE__
 "libaudiofile.1.dylib"
 #else //not _MSC_VER, not _WIN32, not __CYGWIN__
-"libaudiofile.so.0"
+"libaudiofile.so.1"
 #endif//_MSC_VER,_WIN32 or __CYGWIN__
 ;
 
