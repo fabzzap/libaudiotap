@@ -154,9 +154,10 @@ static enum audiotap_status audio2tap_audio_open_common(struct audiotap **audiot
                                                         const struct audio2tap_functions *audio2tap_functions,
                                                         void *priv){
   enum audiotap_status error = AUDIOTAP_WRONG_ARGUMENTS;
-  struct tap_enc_t *tapenc;
-
+  
   do{
+    struct tap_enc_t* tapenc;
+
     if (tapenc_params == NULL)
       break;
 
@@ -171,15 +172,13 @@ static enum audiotap_status audio2tap_audio_open_common(struct audiotap **audiot
         )==NULL
        )
       break;
-    error = AUDIOTAP_OK;
-  }while(0);
 
-  if (error != AUDIOTAP_OK){
-    audio2tap_functions->close(priv);
-    return error;
-  }
-  tapenc_set_silence_threshold(tapenc, 1, freq/10000);
-  return audio2tap_open_common(audiotap, tapenc, freq, machine, videotype, audio2tap_functions, priv);
+    tapenc_set_silence_threshold(tapenc, 1, freq/10000);
+    return audio2tap_open_common(audiotap, tapenc, freq, machine, videotype, audio2tap_functions, priv);
+  }while (0);
+
+  audio2tap_functions->close(priv);
+  return error;
 }
 
 static enum audiotap_status tapfile_get_pulse(struct audiotap *audiotap, uint32_t *pulse, uint32_t *raw_pulse){
