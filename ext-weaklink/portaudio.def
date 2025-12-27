@@ -1,0 +1,9 @@
+EXPORTS
+    Pa_Initialize
+    Pa_Terminate
+    Pa_OpenDefaultStream
+    Pa_CloseStream
+    Pa_StartStream
+    Pa_StopStream
+    Pa_ReadStream
+    Pa_WriteStream

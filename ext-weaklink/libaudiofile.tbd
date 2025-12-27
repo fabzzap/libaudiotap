@@ -1,0 +1,16 @@
+--- !tapi-tbd
+tbd-version:     4
+targets:         [ x86_64-macos, x86_64h-macos,
+                   arm64-macos, arm64e-macos ]
+install-name:    'libaudiofile.dylib'
+exports:
+  - targets:         [ x86_64-macos, x86_64h-macos,
+                       arm64-macos, arm64e-macos ]
+    symbols:         [ _afOpenFile, _afOpenFD,
+                       _afCloseFile, _afReadFrames,  _afWriteFrames,
+                       _afSeekFrame, _afSetVirtualChannels, _afGetSampleFormat,
+                       _afSetVirtualSampleFormat, _afGetVirtualFrameSize,
+                       _afGetFrameCount, _afTellFrame, _afInitFileFormat,
+                       _afInitSampleFormat, _afInitChannels, _afInitRate,
+                       _afGetRate, _afNewFileSetup, _afFreeFileSetup ]
+...

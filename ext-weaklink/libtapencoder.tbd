@@ -1,0 +1,14 @@
+--- !tapi-tbd
+tbd-version:     4
+targets:         [ x86_64-macos, x86_64h-macos,
+                   arm64-macos, arm64e-macos ]
+install-name:    'libtapencoder.dylib'
+exports:
+  - targets:         [ x86_64-macos, x86_64h-macos,
+                       arm64-macos, arm64e-macos ]
+    symbols:         [ _tapenc_init2, _tapenc_exit,
+                       _tapenc_get_pulse, _tapenc_flush,
+                       _tapenc_get_max, _tapenc_invert,
+                       _tapenc_toggle_trigger_on_both_edges,
+                       _tapenc_set_silence_threshold ]
+...

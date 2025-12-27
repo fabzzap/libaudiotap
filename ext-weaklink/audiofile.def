@@ -1,0 +1,20 @@
+EXPORTS
+    afOpenFile
+    afOpenFD
+    afCloseFile
+    afReadFrames
+    afWriteFrames
+    afSeekFrame
+    afSetVirtualChannels
+    afGetSampleFormat
+    afSetVirtualSampleFormat
+    afGetVirtualFrameSize
+    afGetFrameCount
+    afTellFrame
+    afInitFileFormat
+    afInitSampleFormat
+    afInitChannels
+    afInitRate
+    afGetRate
+    afNewFileSetup
+    afFreeFileSetup

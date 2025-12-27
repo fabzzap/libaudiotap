@@ -1,0 +1,13 @@
+--- !tapi-tbd
+tbd-version:     4
+targets:         [ x86_64-macos, x86_64h-macos,
+                   arm64-macos, arm64e-macos ]
+install-name:    'libportaudio.dylib'
+exports:
+  - targets:         [ x86_64-macos, x86_64h-macos,
+                       arm64-macos, arm64e-macos ]
+    symbols:         [ _Pa_Initialize, _Pa_Terminate,
+                       _Pa_OpenDefaultStream, _Pa_CloseStream,
+                       _Pa_StartStream, _Pa_StopStream,
+                       _Pa_ReadStream, _Pa_WriteStream ]
+...

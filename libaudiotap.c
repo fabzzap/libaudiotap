@@ -27,10 +27,10 @@
 #else
 #include <unistd.h>
 #endif
-#include "audiofile.h"
-#include "portaudio.h"
-#include "tapencoder.h"
-#include "tapdecoder.h"
+#include <audiofile.h>
+#include <portaudio.h>
+#include <tapencoder.h>
+#include <tapdecoder.h>
 #include "audiotap.h"
 #include "wait_event.h"
 

@@ -1,0 +1,6 @@
+EXPORTS
+    tapdec_init2
+    tapdec_exit
+    tapdec_set_pulse
+    tapdec_get_buffer
+    tapdec_enable_halfwaves
