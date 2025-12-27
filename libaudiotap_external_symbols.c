@@ -219,7 +219,6 @@ static enum library_status libtapdecoder_init(){
   LOAD(tapdec_set_pulse)
   LOAD(tapdec_get_buffer)
   LOAD(tapdec_enable_halfwaves)
-  LOAD(tapdec_enable_halfwaves)
 
   return LIBRARY_OK;
 }
